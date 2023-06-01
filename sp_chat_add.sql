@@ -12,9 +12,10 @@ BEGIN
 	-- 3: DONE
 	 
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
+	BEGIN
+		ROLLBACK;
 		SELECT 1 AS 'RC';
-    END;
+	END;
    
    	SET @cra = NOW();
    	SET @already_exist = TRUE;
@@ -29,6 +30,9 @@ BEGIN
 	IF (starter_id_ = follower_id_) THEN
 		SELECT 2 AS 'RC';
 	ELSE
+		-- TRANSACTION: START
+		START TRANSACTION;
+		
 		-- Getting some meta if exists.
 		SELECT cid, starter_id, follower_id, starter_is_deleted, follower_is_deleted, last_message_sequence FROM `luna_dev_db`.`chat_meta` 
   		WHERE (starter_id = starter_id_ AND follower_id = follower_id_) OR (starter_id = follower_id_ AND follower_id = starter_id_)
@@ -76,11 +80,11 @@ BEGIN
 			ELSEIF (@starter_is_deleted) THEN
 				UPDATE `luna_dev_db`.`chat_meta`
 				SET kivi = kivi_
-				   , starter_start_sequence = follower_start_sequence 
-				   , starter_delivered_sequence = follower_start_sequence
-				   , starter_seen_sequence = follower_start_sequence
-				   , starter_badge = 0
-				   , starter_is_deleted = FALSE
+				  , starter_start_sequence = follower_start_sequence 
+				  , starter_delivered_sequence = follower_start_sequence
+				  , starter_seen_sequence = follower_start_sequence
+				  , starter_badge = 0
+				  , starter_is_deleted = FALSE
 				WHERE cid = @cid;
 				INSERT INTO `luna_dev_db`.`chat_uid2cid` (uid, cid, mda)
 				VALUES (@starter_id, @cid, @cra);
@@ -88,11 +92,11 @@ BEGIN
 			ELSEIF (@follower_is_deleted) THEN
 				UPDATE `luna_dev_db`.`chat_meta`
 				SET kivi = kivi_
-				   , follower_start_sequence = starter_start_sequence
-				   , follower_delivered_sequence = starter_start_sequence
-				   , follower_seen_sequence = starter_start_sequence
-				   , follower_badge = 0 
-				   , follower_is_deleted = FALSE
+				  , follower_start_sequence = starter_start_sequence
+				  , follower_delivered_sequence = starter_start_sequence
+				  , follower_seen_sequence = starter_start_sequence
+				  , follower_badge = 0 
+				  , follower_is_deleted = FALSE
 				WHERE cid = @cid;
 				INSERT INTO `luna_dev_db`.`chat_uid2cid` (uid, cid, mda)
 				VALUES (@follower_id, @cid, @cra);
@@ -115,7 +119,10 @@ BEGIN
 			SET last_message_sequence = @new_last_message_sequence
 			WHERE cid = @cid;
 		END IF;
-	
+		
+		-- TRANSACTION: END
+		COMMIT;
+		
 		-- And finally, we return the last state of chat meta..
 		SELECT 3 AS 'RC'
 		     , @already_exist AS 'ALREADR_EXIST'
