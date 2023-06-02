@@ -1,6 +1,6 @@
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_del`%
-CREATE PROCEDURE `luna_dev_db`.`sp_chat_del`(
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_block`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_block`(
 	  IN cid_ BIGINT
 	, IN uid_ BIGINT
 )
@@ -8,75 +8,52 @@ BEGIN
 	-- RC:
 	-- 1: EXCEPTION
 	-- 2: INVALID CID
-	-- 3: STARTER HAS ALREADY BEEN DELETED
-	-- 4: FOLLOWER HAS ALREADY BEEN DELETED
-	-- 5: STARTER DELETE THE CHAT
-	-- 6: FOLLOWER DELETE THE CHAT
+	-- 3: STARTER HAS ALREADY BEEN BLOCKECD
+	-- 4: FOLLOWER HAS ALREADY BEEN BLOCKED
+	-- 5: FOLLOWER BLOCKED THE STARTER
+	-- 6: STARTER BLOCKED THE FOLLOWER
 	 
-	DECLARE EXIT HANDLER FOR SQLEXCEPTION
-	BEGIN
-		ROLLBACK;
-		SELECT 1 AS 'RC';
-	END;
+	-- DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	-- BEGIN
+	--  	ROLLBACK;
+	-- 	SELECT 1 AS 'RC';
+	-- END;
    
    	SET @mda = NOW();
+	SET @cra = @mda;
    	SET @cid = NULL;
-	SET @starter_is_deleted = TRUE;
-	SET @follower_is_deleted = TRUE;
+	SET @starter_is_blocked = TRUE;
+	SET @follower_is_blocked = TRUE;
 	SET @starter_id = NULL;
 	SET @follower_id = NULL;
 	SET @last_message_sequence = NULL;
   	SET @rc = NULL;
   
 	-- Getting some meta if exists.
-	SELECT cid, starter_id, follower_id, starter_is_deleted, follower_is_deleted, last_message_sequence FROM `luna_dev_db`.`chat_meta` 
+	SELECT cid, starter_id, follower_id, starter_is_blocked, follower_is_blocked, last_message_sequence FROM `luna_dev_db`.`chat_meta` 
 	WHERE (cid = cid_) AND (starter_id = uid_ OR follower_id = uid_)
-	INTO @cid, @starter_id, @follower_id, @starter_is_deleted, @follower_is_deleted, @last_message_sequence;
+	INTO @cid, @starter_id, @follower_id, @starter_is_blocked, @follower_is_blocked, @last_message_sequence;
 	
 	-- Invalid CID
 	IF (ISNULL(@cid)) THEN
 		SELECT 2 AS 'RC';
 	ELSE
-		-- TRANSACTION: START
-		START TRANSACTION;
-		-- Starter has already been deleted.
-		IF (@starter_id = uid_ AND @starter_is_deleted = TRUE) THEN	
+		-- Starter has already been blocked.
+		IF (@starter_id = uid_ AND @starter_is_blocked = TRUE) THEN
 			SET @rc = 3;	
-		-- Follower has already been deleted.
-		ELSEIF (@follower_id = uid_ AND @follower_is_deleted = TRUE) THEN
+		-- Follower has already been blocked.
+		ELSEIF (@follower_id = uid_ AND @follower_is_blocked = TRUE) THEN
 			SET @rc = 4;	
 		-- One side of the chat wants to block other side.
 		ELSE
-			-- Starter wants to delete the chat.
+			-- TRANSACTION: START
+			START TRANSACTION;
+			-- Follower wants to block the starter.
 			IF (@starter_id = uid_ ) THEN
 				SET @new_last_message_sequence = @last_message_sequence + 1;
 				-- Update chat_meta
 				UPDATE `luna_dev_db`.`chat_meta`
-				SET starter_is_deleted = TRUE
-				  , starter_start_sequence = @last_message_sequence
-				  , starter_delivered_sequence = @last_message_sequence
-				  , starter_seen_sequence = @last_message_sequence
-				  , last_message_sequence = @new_last_message_sequence
-				  , mda = @mda
-				WHERE cid = @cid;
-				-- Update chat_uid2cid
-				UPDATE `luna_dev_db`.`chat_uid2cid`
-				SET mda = @mda
-				WHERE cid = @cid;
-				-- Insert DELETE action message
-				INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
-				VALUES (@cid, @cra, 'DELETE', @new_last_message_sequence, @starter_id, "");
-			    -- Upddate RC
-				SET @rc = 5;
-			-- Follower wants to delete the chat.
-			ELSEIF(@follower_id = uid_) THEN
-				SET @new_last_message_sequence = @last_message_sequence + 1;
-				-- Update chat_meta
-				UPDATE `luna_dev_db`.`chat_meta`
-				SET follower_is_deleted = TRUE
-				  , follower_start_sequence = @last_message_sequence
-				  , follower_delivered_sequence = @last_message_sequence
-				  , follower_seen_sequence = @last_message_sequence
+				SET starter_is_blocked = TRUE
 				  , last_message_sequence = @new_last_message_sequence
 				  , mda = @mda
 				WHERE cid = @cid;
@@ -86,13 +63,30 @@ BEGIN
 				WHERE cid = @cid;
 				-- Insert BLOCK action message
 				INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
-				VALUES (@cid, @cra, 'DELETE', @new_last_message_sequence, @follower_id, "");
+				VALUES (@cid, @cra, 'BLOCK', @new_last_message_sequence, @follower_id, "");
+			    -- Upddate RC
+				SET @rc = 5;
+			-- Starter wants to block the follower.
+			ELSEIF(@follower_id = uid_) THEN
+				SET @new_last_message_sequence = @last_message_sequence + 1;
+				-- Update chat_meta
+				UPDATE `luna_dev_db`.`chat_meta`
+				SET follower_is_blocked = TRUE
+				  , last_message_sequence = @new_last_message_sequence
+				  , mda = @mda
+				WHERE cid = @cid;
+				-- Update chat_uid2cid
+				UPDATE `luna_dev_db`.`chat_uid2cid`
+				SET mda = @mda
+				WHERE cid = @cid;
+				-- Insert BLOCK action message
+				INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
+				VALUES (@cid, @cra, 'BLOCK', @new_last_message_sequence, @starter_id, "");
 			    -- Upddate RC
 				SET @rc = 6;
 			END IF;
-			
 			-- TRANSACTION: END
-			COMMIT;	
+			COMMIT;
 		END IF;
 		-- Since the chat meta has been updated, we send it agian for updating the cache.
 		SELECT @rc AS 'RC'
@@ -121,10 +115,10 @@ BEGIN
 			 , kivi AS 'KIVI'
 		FROM `luna_dev_db`.`chat_meta` 
 		WHERE cid = @cid;
-	END IF;	
+	END IF;
 END
 %
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_del`(11, 1);
+-- CALL `luna_dev_db`.`sp_chat_block`(5, 2);

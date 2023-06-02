@@ -15,7 +15,8 @@ PARTITION BY KEY(uid) PARTITIONS 10;
 DROP TABLE IF EXISTS `luna_dev_db`.`chat_meta`;
 CREATE TABLE `luna_dev_db`.`chat_meta` (
 	  `cid` BIGINT NOT NULL AUTO_INCREMENT
-	, `cra` DATETIME NOT NULL 
+	, `cra` DATETIME NOT NULL
+	, `mda` DATETIME DEFAULT NULL
 	, `starter_id` BIGINT NOT NULL
 	, `follower_id` BIGINT NOT NULL
 	, `last_message_sequence` BIGINT NOT NULL DEFAULT 0
@@ -24,7 +25,6 @@ CREATE TABLE `luna_dev_db`.`chat_meta` (
 	, `starter_start_sequence` BIGINT NOT NULL DEFAULT 0
 	, `starter_delivered_sequence` BIGINT NOT NULL DEFAULT 0
 	, `starter_seen_sequence` BIGINT NOT NULL DEFAULT 0
-	, `starter_badge` BIGINT NOT NULL DEFAULT 0
 	, `starter_is_muted` BOOL NOT NULL DEFAULT FALSE
 	, `starter_is_blocked` BOOL NOT NULL DEFAULT FALSE
 	, `starter_is_deleted` BOOL NOT NULL DEFAULT FALSE
@@ -32,7 +32,6 @@ CREATE TABLE `luna_dev_db`.`chat_meta` (
 	, `follower_start_sequence` BIGINT NOT NULL DEFAULT 0
 	, `follower_delivered_sequence` BIGINT NOT NULL DEFAULT 0
 	, `follower_seen_sequence` BIGINT NOT NULL DEFAULT 0
-	, `follower_badge` BIGINT NOT NULL DEFAULT 0
 	, `follower_is_muted` BOOL NOT NULL DEFAULT FALSE
 	, `follower_is_blocked` BOOL NOT NULL DEFAULT FALSE
 	, `follower_is_deleted` BOOL NOT NULL DEFAULT FALSE 
@@ -51,7 +50,7 @@ CREATE TABLE `luna_dev_db`.`chat_message`(
 	 `cid` BIGINT NOT NULL
 	, `cra` DATETIME NOT NULL 
 	, `mda` DATETIME DEFAULT NULL
-	, `type` ENUM('MESSAGE', 'CREATE', 'DELETE', 'MUTE', 'BLOCK')
+	, `type` ENUM('MESSAGE', 'CREATE', 'DELETE', 'MUTE', 'UNMUTE', 'BLOCK', 'UNBLOCK')
 	, `sequence` BIGINT NOT NULL
 	, `reply_sequence` BIGINT DEFAULT NULL
 	, `writer` ENUM('STARTER', 'FOLLOWER')
