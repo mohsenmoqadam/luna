@@ -1,6 +1,6 @@
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_block`%
-CREATE PROCEDURE `luna_dev_db`.`sp_chat_block`(
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_unblock`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_unblock`(
 	  IN cid_ BIGINT
 	, IN uid_ BIGINT
 )
@@ -8,10 +8,10 @@ BEGIN
 	-- RC:
 	-- 1: EXCEPTION
 	-- 2: INVALID CID
-	-- 3: STARTER HAS ALREADY BEEN BLOCKECD
-	-- 4: FOLLOWER HAS ALREADY BEEN BLOCKED
-	-- 5: FOLLOWER BLOCKED THE STARTER
-	-- 6: STARTER BLOCKED THE FOLLOWER
+	-- 3: STARTER HAS ALREADY BEEN UNBLOCKECD
+	-- 4: FOLLOWER HAS ALREADY BEEN UNBLOCKED
+	-- 5: FOLLOWER UNBLOCKED THE STARTER
+	-- 6: STARTER UNBLOCKED THE FOLLOWER
 	 
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
@@ -22,8 +22,8 @@ BEGIN
    	SET @mda = NOW();
 	SET @cra = @mda;
    	SET @cid = NULL;
-	SET @starter_is_blocked = TRUE;
-	SET @follower_is_blocked = TRUE;
+	SET @starter_is_blocked = FALSE;
+	SET @follower_is_blocked = FALSE;
 	SET @starter_id = NULL;
 	SET @follower_id = NULL;
 	SET @last_message_sequence = NULL;
@@ -38,22 +38,22 @@ BEGIN
 	IF (ISNULL(@cid)) THEN
 		SELECT 2 AS 'RC';
 	ELSE
-		-- Starter has already been blocked.
-		IF (@starter_id = uid_ AND @starter_is_blocked = TRUE) THEN
+		-- Starter has already been unblocked.
+		IF (@starter_id = uid_ AND @starter_is_blocked = FALSE) THEN
 			SET @rc = 3;	
-		-- Follower has already been blocked.
-		ELSEIF (@follower_id = uid_ AND @follower_is_blocked = TRUE) THEN
+		-- Follower has already been unblocked.
+		ELSEIF (@follower_id = uid_ AND @follower_is_blocked = FALSE) THEN
 			SET @rc = 4;	
-		-- One side of the chat wants to block other side.
+		-- One side of the chat wants to unblock other side.
 		ELSE
 			-- TRANSACTION: START
 			START TRANSACTION;
-			-- Follower wants to block the starter.
+			-- Follower wants to unblock the starter.
 			IF (@starter_id = uid_ ) THEN
 				SET @new_last_message_sequence = @last_message_sequence + 1;
 				-- Update chat_meta
 				UPDATE `luna_dev_db`.`chat_meta`
-				SET starter_is_blocked = TRUE
+				SET starter_is_blocked = FALSE
 				  , last_message_sequence = @new_last_message_sequence
 				  , mda = @mda
 				WHERE cid = @cid;
@@ -61,17 +61,17 @@ BEGIN
 				UPDATE `luna_dev_db`.`chat_uid2cid`
 				SET mda = @mda
 				WHERE cid = @cid;
-				-- Insert BLOCK action message
+				-- Insert UNBLOCK action message
 				INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
-				VALUES (@cid, @cra, 'BLOCK', @new_last_message_sequence, @follower_id, "");
+				VALUES (@cid, @cra, 'UNBLOCK', @new_last_message_sequence, @follower_id, "");
 			    -- Upddate RC
 				SET @rc = 5;
-			-- Starter wants to block the follower.
+			-- Starter wants to unblock the follower.
 			ELSEIF(@follower_id = uid_) THEN
 				SET @new_last_message_sequence = @last_message_sequence + 1;
 				-- Update chat_meta
 				UPDATE `luna_dev_db`.`chat_meta`
-				SET follower_is_blocked = TRUE
+				SET follower_is_blocked = FALSE
 				  , last_message_sequence = @new_last_message_sequence
 				  , mda = @mda
 				WHERE cid = @cid;
@@ -79,9 +79,9 @@ BEGIN
 				UPDATE `luna_dev_db`.`chat_uid2cid`
 				SET mda = @mda
 				WHERE cid = @cid;
-				-- Insert BLOCK action message
+				-- Insert UNBLOCK action message
 				INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
-				VALUES (@cid, @cra, 'BLOCK', @new_last_message_sequence, @starter_id, "");
+				VALUES (@cid, @cra, 'UNBLOCK', @new_last_message_sequence, @starter_id, "");
 			    -- Upddate RC
 				SET @rc = 6;
 			END IF;
@@ -121,4 +121,4 @@ END
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_block`(5, 2);
+-- CALL `luna_dev_db`.`sp_chat_unblock`(5, 2);

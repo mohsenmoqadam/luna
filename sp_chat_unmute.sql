@@ -1,6 +1,6 @@
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_block`%
-CREATE PROCEDURE `luna_dev_db`.`sp_chat_block`(
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_unmute`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_unmute`(
 	  IN cid_ BIGINT
 	, IN uid_ BIGINT
 )
@@ -8,52 +8,53 @@ BEGIN
 	-- RC:
 	-- 1: EXCEPTION
 	-- 2: INVALID CID
-	-- 3: STARTER HAS ALREADY BEEN BLOCKECD
-	-- 4: FOLLOWER HAS ALREADY BEEN BLOCKED
-	-- 5: FOLLOWER BLOCKED THE STARTER
-	-- 6: STARTER BLOCKED THE FOLLOWER
+	-- 3: STARTER HAS ALREADY BEEN UNMUTED
+	-- 4: FOLLOWER HAS ALREADY BEEN UNMUTED
+	-- 5: FOLLOWER UNMUTED THE STARTER
+	-- 6: STARTER UNMUTED THE FOLLOWER
 	 
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
-	 	ROLLBACK;
+		ROLLBACK;
 		SELECT 1 AS 'RC';
 	END;
    
    	SET @mda = NOW();
-	SET @cra = @mda;
+   	SET @cra = @mda;
    	SET @cid = NULL;
-	SET @starter_is_blocked = TRUE;
-	SET @follower_is_blocked = TRUE;
+	SET @starter_is_muted = FALSE;
+	SET @follower_is_muted = FALSE;
 	SET @starter_id = NULL;
 	SET @follower_id = NULL;
 	SET @last_message_sequence = NULL;
+	SET @last_event_sequence = NULL;
   	SET @rc = NULL;
   
 	-- Getting some meta if exists.
-	SELECT cid, starter_id, follower_id, starter_is_blocked, follower_is_blocked, last_message_sequence FROM `luna_dev_db`.`chat_meta` 
-	WHERE (cid = cid_) AND (starter_id = uid_ OR follower_id = uid_)
-	INTO @cid, @starter_id, @follower_id, @starter_is_blocked, @follower_is_blocked, @last_message_sequence;
+	SELECT cid, starter_id, follower_id, starter_is_muted, follower_is_muted, last_message_sequence FROM `luna_dev_db`.`chat_meta` 
+	WHERE (cid = cid_) AND (starter_id = uid_ OR follower_id = uid_) 
+	INTO @cid, @starter_id, @follower_id, @starter_is_muted, @follower_is_muted, @last_message_sequence;
 	
 	-- Invalid CID
 	IF (ISNULL(@cid)) THEN
-		SELECT 2 AS 'RC';
+		SET @rc = 2;
 	ELSE
-		-- Starter has already been blocked.
-		IF (@starter_id = uid_ AND @starter_is_blocked = TRUE) THEN
+		-- TRANSACTION: START
+		START TRANSACTION;
+		-- Starter has already been unmuted.
+		IF (@starter_id = uid_ AND @starter_is_muted = FALSE) THEN
 			SET @rc = 3;	
-		-- Follower has already been blocked.
-		ELSEIF (@follower_id = uid_ AND @follower_is_blocked = TRUE) THEN
+		-- Follower has already been unmuted.
+		ELSEIF (@follower_id = uid_ AND @follower_is_muted = FALSE) THEN
 			SET @rc = 4;	
-		-- One side of the chat wants to block other side.
+		-- One side of the chat wants to unmute other side.
 		ELSE
-			-- TRANSACTION: START
-			START TRANSACTION;
-			-- Follower wants to block the starter.
+			-- Follower wants to unmute the starter.
 			IF (@starter_id = uid_ ) THEN
 				SET @new_last_message_sequence = @last_message_sequence + 1;
 				-- Update chat_meta
 				UPDATE `luna_dev_db`.`chat_meta`
-				SET starter_is_blocked = TRUE
+				SET starter_is_muted = FALSE
 				  , last_message_sequence = @new_last_message_sequence
 				  , mda = @mda
 				WHERE cid = @cid;
@@ -61,17 +62,17 @@ BEGIN
 				UPDATE `luna_dev_db`.`chat_uid2cid`
 				SET mda = @mda
 				WHERE cid = @cid;
-				-- Insert BLOCK action message
+				-- Insert UNMUTE action message
 				INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
-				VALUES (@cid, @cra, 'BLOCK', @new_last_message_sequence, @follower_id, "");
+				VALUES (@cid, @cra, 'UNMUTE', @new_last_message_sequence, @follower_id, "");
 			    -- Upddate RC
 				SET @rc = 5;
-			-- Starter wants to block the follower.
+			-- Starter wants to unmute the follower.
 			ELSEIF(@follower_id = uid_) THEN
 				SET @new_last_message_sequence = @last_message_sequence + 1;
 				-- Update chat_meta
 				UPDATE `luna_dev_db`.`chat_meta`
-				SET follower_is_blocked = TRUE
+				SET follower_is_muted = FALSE
 				  , last_message_sequence = @new_last_message_sequence
 				  , mda = @mda
 				WHERE cid = @cid;
@@ -79,15 +80,15 @@ BEGIN
 				UPDATE `luna_dev_db`.`chat_uid2cid`
 				SET mda = @mda
 				WHERE cid = @cid;
-				-- Insert BLOCK action message
+				-- Insert UNMUTE action message
 				INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
-				VALUES (@cid, @cra, 'BLOCK', @new_last_message_sequence, @starter_id, "");
+				VALUES (@cid, @cra, 'UNMUTE', @new_last_message_sequence, @starter_id, "");
 			    -- Upddate RC
 				SET @rc = 6;
 			END IF;
-			-- TRANSACTION: END
-			COMMIT;
-		END IF;
+		END IF;	
+		-- TRANSACTION: END
+		COMMIT;
 		-- Since the chat meta has been updated, we send it agian for updating the cache.
 		SELECT @rc AS 'RC'
 			 , cid AS 'CID'
@@ -115,10 +116,10 @@ BEGIN
 			 , kivi AS 'KIVI'
 		FROM `luna_dev_db`.`chat_meta` 
 		WHERE cid = @cid;
-	END IF;
+	END IF;	
 END
 %
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_block`(5, 2);
+-- CALL `luna_dev_db`.`sp_chat_unmute`(5, 11);
