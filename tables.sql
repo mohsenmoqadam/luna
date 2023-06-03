@@ -71,6 +71,7 @@ PARTITION BY KEY(cid) PARTITIONS 10;
 DROP TABLE IF EXISTS `luna_dev_db`.`chat_storage`;
 CREATE TABLE `luna_dev_db`.`chat_storage`( 
 	 `cid` BIGINT NOT NULL
+	, `uid` BIGINT NOT NULL
 	, `cra` DATETIME NOT NULL 
 	, `type` ENUM('LINK', 'FILE')
 	, `sequence` BIGINT NOT NULL
@@ -78,8 +79,8 @@ CREATE TABLE `luna_dev_db`.`chat_storage`(
 	, `body` VARCHAR(512) NOT NULL
 	, `oid` VARCHAR(256) DEFAULT NULL
 	, `is_deleted` BOOL DEFAULT FALSE
-	, INDEX (`cid`, `type`)
-	, INDEX (`cid`, `type`, `sequence`)
+	, INDEX (`uid`, `cid`, `type`)     -- GET
+	, INDEX (`uid`, `cid`, `sequence`) -- DEL | SET
 ) 
 DEFAULT CHARSET=utf8mb4 
 COLLATE utf8mb4_unicode_ci

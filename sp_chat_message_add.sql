@@ -2,13 +2,15 @@ DELIMITER %
 DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_message_add`%
 CREATE PROCEDURE `luna_dev_db`.`sp_chat_message_add`(
 	  IN cid_ BIGINT
+	, IN starter_id_ BIGINT
+	, IN follower_id_ BIGINT
 	, IN writer_ BIGINT
 	, IN message_sequence_ BIGINT  
 	, IN reply_sequence_ BIGINT
 	, IN body_ TEXT
 	, IN objects_ JSON
 	, IN auto_delete_ INT
-	, IN kivi_ TEXT
+	, IN kivi_ JSON
 )
 
 BEGIN
@@ -45,13 +47,15 @@ BEGIN
 	-- Save message
 	INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, mda, type, sequence, reply_sequence, writer, body, objects, auto_delete, kivi)
 	VALUES (cid_, @cra, @mda, 'MESSAGE', message_sequence_, reply_sequence_, writer_, body_, objects_, auto_delete_, kivi_);
+	-- Upddate chat_storage
+	SELECT `luna_dev_db`.`sf_storage_add`(cid_, starter_id_, follower_id_, message_sequence_, @cra, objects_) INTO @objects_cnt;
 	-- TRANSACTION: END
 	COMMIT;
 	
-	SELECT 2 AS 'RC', @cra AS 'CRA'; 
+	SELECT 2 AS 'RC', @cra AS 'CRA', @objects_cnt AS 'OBJECTS_COUNT'; 
 END
 %
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_message_add`(6, 1, 5, 0, "body", '[{"type": "FILE", "body":"--BODY--", "mime":"image/png", "oid": "--OID--"}, {"type": "LINK", "body": "https://example.com/any..."}]', 0, '{}');
+-- CALL `luna_dev_db`.`sp_chat_message_add`(6, 1, 2, 1, 3, 0, "body", '[{"type": "FILE", "body":"--BODY--", "mime":"image/png", "oid": "--OID--"}, {"type": "LINK", "body": "https://example.com/any..."}]', 0, '{}');
