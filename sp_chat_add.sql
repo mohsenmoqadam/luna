@@ -165,4 +165,4 @@ END
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_add`(2, 1, "{}");
+-- CALL `luna_dev_db`.`sp_chat_add`(1, 2, "{}");
