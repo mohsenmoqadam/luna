@@ -1,8 +1,8 @@
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_set_kivi`%
-CREATE PROCEDURE `luna_dev_db`.`sp_chat_set_kivi`(
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_set_pinned_messages`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_set_pinned_messages`(
 	  IN cid_ BIGINT
-	, IN kivi_ JSON
+	, IN pinned_messages_ JSON
 )
 BEGIN
 	-- RC:
@@ -24,7 +24,7 @@ BEGIN
 	START TRANSACTION;
 	-- Update chat_meta
 	UPDATE luna_dev_db.chat_meta 
-		SET kivi = kivi_
+		SET pinned_messages = pinned_messages_
 		  , mda = @mda 
 	WHERE cid = cid_;
 	-- Update chat_uid2cid 
@@ -40,4 +40,4 @@ END
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_set_kivi`(6, '{"key": "value"}');
+-- CALL `luna_dev_db`.`sp_chat_set_pinned_messages`(6, '[1, 2, 3]');

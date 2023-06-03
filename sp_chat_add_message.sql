@@ -23,15 +23,14 @@ BEGIN
 	END;
    
 	-- Be careful that the latest version of chat_meta is available in the cache layer and we trust it,
-    -- Therefore, in order to reduce the processing load, we do not check the correctness of the information again.
-    -- So we suppose:
-    --                1. CID is valid Exist (and has not been deleted by the writer).
-    --                2. The writer isn't blocked.
-    --                3. The writer_id_ is one of starter_id or follower_id
-    --                4. The message_sequence_ is already incremented and updated in the cache layer.
+	-- Therefore, in order to reduce the processing load, we do not check the correctness of the information again.
+	-- So we suppose:
+	--                1. CID is valid Exist (and has not been deleted by the writer).
+	--                2. The writer isn't blocked.
+	--                3. The writer_id_ is one of starter_id or follower_id
+	--                4. The message_sequence_ is already incremented and updated in the cache layer.
       
-	SET @rc = NULL;
-   	SET @cra = NOW();
+	SET @cra = NOW();
    	SET @mda = @cra;
 	
    	-- TRANSACTION: START
