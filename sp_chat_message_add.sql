@@ -1,6 +1,6 @@
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_add_message`%
-CREATE PROCEDURE `luna_dev_db`.`sp_chat_add_message`(
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_message_add`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_message_add`(
 	  IN cid_ BIGINT
 	, IN writer_ BIGINT
 	, IN message_sequence_ BIGINT  
@@ -54,4 +54,4 @@ END
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_add_message`(6, 1, 5, 0, "body", '[{"type": "FILE", "body":"--BODY--", "mime":"image/png", "oid": "--OID--"}, {"type": "LINK", "body": "https://example.com/any..."}]', 0, '{}');
+-- CALL `luna_dev_db`.`sp_chat_message_add`(6, 1, 5, 0, "body", '[{"type": "FILE", "body":"--BODY--", "mime":"image/png", "oid": "--OID--"}, {"type": "LINK", "body": "https://example.com/any..."}]', 0, '{}');
