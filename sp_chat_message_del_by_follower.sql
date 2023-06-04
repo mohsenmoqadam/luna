@@ -12,11 +12,11 @@ BEGIN
 	-- 1: EXCEPTION
 	-- 2: DONE
 	 
-	-- DECLARE EXIT HANDLER FOR SQLEXCEPTION
-	-- BEGIN
-	-- 	ROLLBACK;
-	-- 	SELECT 1 AS 'RC';
-	-- END;
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		ROLLBACK;
+		SELECT 1 AS 'RC';
+	END;
    
 	-- Be careful that the latest version of chat_meta is available in the cache layer and we trust it,
 	-- Therefore, in order to reduce the processing load, we do not check the correctness of the information again.

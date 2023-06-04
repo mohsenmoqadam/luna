@@ -4,7 +4,6 @@ CREATE PROCEDURE `luna_dev_db`.`sp_chat_set_starter_delivered_sequence`(
 	  IN cid_ BIGINT  
 	, IN starter_delivered_sequence_ BIGINT
 )
-
 BEGIN
 	-- RC:
 	-- 1: EXCEPTION
