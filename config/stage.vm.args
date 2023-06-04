@@ -1,0 +1,4 @@
+## Name of the node
+-name luna-stage@luna-stage-ip
+## Cookie for distributed erlang
+-setcookie luna-cookie

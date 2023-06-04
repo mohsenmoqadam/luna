@@ -1,0 +1,6 @@
+// +> category = REQUEST
+package luna.sample.func;
+import "luna.sample.type.proto";
+// *> Code = 151
+message Call {
+}
