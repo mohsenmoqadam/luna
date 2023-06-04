@@ -78,7 +78,6 @@ CREATE TABLE `luna_dev_db`.`chat_storage`(
 	, `mime` VARCHAR(64) DEFAULT NULL 
 	, `body` VARCHAR(512) NOT NULL
 	, `oid` VARCHAR(256) DEFAULT NULL
-	, `is_deleted` BOOL DEFAULT FALSE
 	, INDEX (`uid`, `cid`, `type`)     -- GET
 	, INDEX (`uid`, `cid`, `sequence`) -- DEL | SET
 ) 

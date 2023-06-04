@@ -3,7 +3,7 @@ USE luna_dev_db;
 DELIMITER %
 DROP PROCEDURE IF EXISTS `luna_dev_db`.`fn_get_chat_messages`%
 CREATE PROCEDURE `luna_dev_db`.`fn_get_chat_messages`(
-      IN cid_ INT
+      IN cid_ BIGINT
     , IN from_message_sequence_ BIGINT
 	, IN length_ INT 
 )
