@@ -124,6 +124,7 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) ->
+    luna_db_pool:del_worker(self()),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
