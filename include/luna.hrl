@@ -18,7 +18,7 @@
 -record( luna_chat
        , { cid :: non_neg_integer()
 	 , cra :: luna_date()
-	 , mda :: luna_date()
+	 , mda :: null | luna_date()
 	 , starter_id :: non_neg_integer()
 	 , follower_id :: non_neg_integer()
 	 , last_message_sequence :: non_neg_integer()
@@ -43,8 +43,40 @@
        ).
 -type luna_chat() :: #luna_chat{}.
 
+-record( luna_chat_message
+       , { cra :: luna_date()
+	 , mda :: null | luna_date()
+	 , type :: luna_chat_message_type()
+	 , sequence :: non_neg_integer()
+	 , reply_sequence :: null | non_neg_integer()
+	 , writer :: luna_chat_message_writer()
+	 , body :: binary()
+	 , objects :: luna_json()
+	 , actions :: luna_json()
+	 , is_deleted_by_starter :: boolean()
+	 , is_deleted_by_follower :: boolean()
+	 , auto_delete :: null | non_neg_integer()
+	 , kivi :: luna_json()
+	 , version :: non_neg_integer()
+	 }
+       ).
+-type luna_chat_message() :: #luna_chat_message{}.
+
+-record( luna_chat_object
+       , { cra :: luna_date()
+	 , type :: luna_chat_object_type()
+	 , sequence :: non_neg_integer()
+	 , mime :: null | binary()
+	 , body :: null | binary()
+	 , oid :: null | binary()
+	 }
+       ).
+
 -type luna_json() :: map().
 -type luna_date() :: non_neg_integer().
+-type luna_chat_message_type() :: 'MESSAGE' | 'CREATE' | 'DELETE' | 'MUTE' | 'UNMUTE' | 'BLOCK' |  'UNBLOCK'.
+-type luna_chat_message_writer() :: 'STARTER' | 'FOLLOWER'.
+-type luna_chat_object_type() :: 'FILE' | 'LINK'.
 
 -ifdef(TEST).
 -define(LOG_ERROR(Format, Args), ct:print(default, 50, Format, Args)).

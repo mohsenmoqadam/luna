@@ -21,7 +21,18 @@
        ).
 
 -export([ sp_chat_message_add/10
-	]).
+	, sp_chat_message_del/5
+	, sp_chat_message_del_by_starter/4
+	, sp_chat_message_del_by_follower/4
+	, sp_chat_message_get/3
+	, sp_chat_message_set/9
+	, sp_chat_message_set_action/4
+	]
+       ).
+
+-export([ sp_chat_storage_get/5 
+	]
+       ).
 
 -import( luna_utils
        , [ json/1
@@ -431,28 +442,214 @@ sp_chat_set_follower_auto_delete(CID, FollowerAutoDelete) ->
 
 %% =================================================================================
 %% SP: luna_dev_db.sp_chat_message_add
-%% Object: #{objects => [ #{ type => 'FILE'
-%%                         , body => <<"body">>
-%%                         , mime => <<"image/png">>
-%%                         , oid => <<"oid">>
-%%                         }
-%%                      , #{ type => <<"LINK">>
-%%                         , body => <<"body-">>
-%%                         }
-%%                      ]
-%%          }
+%% Object: #{items => [ #{ type => 'FILE'
+%%                       , body => <<"body">>
+%%                       , mime => <<"image/png">>
+%%                       , oid => <<"oid">>
+%%                       }
+%%                    , #{ type => <<"LINK">>
+%%                       , body => <<"body-">>
+%%                       }
+%%                    ]
+%%        }
 %% =================================================================================
 sp_chat_message_add( CID, StarterId, FollowerId, Writer, MessageSequence
-		   , ReplySequence, Body, Objects0, AutoDelete, KiVi ) ->
+		   , ReplySequence, Body, Objects, AutoDelete, KiVi ) ->
     try
-	Objects = maps:get(objects, Objects0, []),
 	Query = <<"CALL luna_dev_db.sp_chat_message_add(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
 	Params = [ CID, StarterId, FollowerId, Writer, MessageSequence
-		 , ReplySequence, Body, json(Objects), AutoDelete, json(KiVi) ],
+		 , ReplySequence, Body, object(Objects), AutoDelete, json(KiVi) ],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
 	    {ok, _, [[2, CRA, ObjectCount]]} -> {ok, date(CRA), ObjectCount}
-	end.
+	end
     catch
 	_:Eny -> {error, Eny}
     end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_message_get
+%% =================================================================================
+sp_chat_message_get(CID, From, Length) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_message_get(?, ?, ?)">>,
+	Params = [CID, From, Length],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, Results} -> 
+		{ ok
+		, lists:foldl( fun([ 2, CRA, MDA, Type, Sequence, ReplySequence
+				   , Writer, Body, Objects, Actions
+				   , IsDeletedByStarter, IsDeletedByFollower 
+				   , AutoDelete, Kivi, Version], ACC) ->
+				       ACC ++ [#luna_chat_message{ cra = date(CRA)
+								 , mda = date(MDA)
+								 , type = type(Type)
+								 , sequence = Sequence
+								 , reply_sequence = ReplySequence
+								 , writer = writer(Writer)
+								 , body = Body
+								 , objects = object(json(Objects))
+								 , actions = action(json(Actions))
+								 , is_deleted_by_starter = IsDeletedByStarter
+								 , is_deleted_by_follower = IsDeletedByFollower 
+								 , auto_delete = AutoDelete
+								 , kivi = json(Kivi)
+								 , version = Version
+						 }
+					      ]
+			       end
+			     , [], Results)
+		}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_message_del
+%% =================================================================================
+sp_chat_message_del( CID, StarterId, FollowerID
+		   , MessageSequence, LastEventSequence ) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_message_del(?, ?, ?, ?, ?)">>,
+	Params = [CID, StarterId, FollowerID, MessageSequence, LastEventSequence],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_message_del_by_starter
+%% =================================================================================
+sp_chat_message_del_by_starter( CID, StarterId
+			      , MessageSequence, LastEventSequence ) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_message_del_by_starter(?, ?, ?, ?)">>,
+	Params = [CID, StarterId, MessageSequence, LastEventSequence],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_message_del_by_follower
+%% =================================================================================
+sp_chat_message_del_by_follower( CID, FollowerId
+			       , MessageSequence, LastEventSequence ) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_message_del_by_follower(?, ?, ?, ?)">>,
+	Params = [CID, FollowerId, MessageSequence, LastEventSequence],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_message_set
+%% =================================================================================
+sp_chat_message_set( CID, StarterId, FollowerId, MessageSequence
+		   , EventSequence, Body, Objects, AutoDelete, KiVi ) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_message_set(?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
+	Params = [ CID, StarterId, FollowerId, MessageSequence
+		 , EventSequence, Body, object(Objects)
+		 , AutoDelete, json(KiVi) ],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, [[2, MDA, ObjectCount]]} -> {ok, date(MDA), ObjectCount}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_message_set_action
+%% Actions: #{items => [ #{ by => starter_id 
+%%                        , imoji => <<"any">>
+%%                        }
+%%                     , #{ any => any
+%%                        }
+%%                     ]
+%%          }
+%% =================================================================================
+sp_chat_message_set_action(CID, MessageSequence, LastEventSequence, Actions) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_message_set_action(?, ?, ?, ?)">>,
+	Params = [CID, MessageSequence, LastEventSequence, action(Actions)],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_storage_get
+%% =================================================================================
+sp_chat_storage_get(CID, UID, Type, From, Length) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_storage_get(?, ?, ?, ?, ?)">>,
+	Params = [CID, UID, object(Type), From, Length],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, Results} -> 
+		{ ok
+		, lists:foldl( fun([ 2, CRA, Sequence, Mime, Body, Oid], ACC) ->
+				       ACC ++ [#luna_chat_object{ cra = date(CRA)
+								, type = Type
+								, sequence = Sequence
+								, mime = Mime
+								, body = Body
+								, oid = Oid
+								}
+					      ]
+			       end
+			     , [], Results)
+		}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% Internal functions
+%% =================================================================================
+type(<<"MESSAGE">>) -> 'MESSAGE';
+type(<<"CREATE">>) -> 'CREATE';
+type(<<"DELETE">>) -> 'DELETE';
+type(<<"MUTE">>) -> 'MUTE';
+type(<<"UNMUTE">>) -> 'UNMUTE';
+type(<<"BLOCK">>) -> 'BLOCK';
+type(<<"UNBLOCK">>) -> 'UNBLOCK'.
+
+writer(<<"STARTER">>) -> 'STARTER';
+writer(<<"FOLLOWER">>) -> 'FOLLOWER'.
+     
+object(Objects) when is_list(Objects) ->
+    #{items => Objects};
+object(#{items := Items}) ->
+    json(Items);
+object(<<"FILE">>) -> 'FILE';
+object(<<"LINK">>) -> 'LINK'; 
+object('FILE') -> <<"FILE">>; 
+object('LINK') -> <<"LINK">>. 
+
+
+action(Objects) when is_list(Objects) ->
+    #{items => Objects};
+action(#{items := Items}) ->
+    json(Items).
+
+
+    

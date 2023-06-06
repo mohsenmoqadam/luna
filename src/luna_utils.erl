@@ -15,6 +15,7 @@ json(Input) when is_map(Input) ->
 json(Input) when is_list(Input) ->
     jiffy:encode(Input).
 
+date(null) -> null;
 date({{Y, MO, D}, {H, MI, S0}}) when is_float(S0) ->
     date({{Y, MO, D}, {H, MI, trunc(S0), ceil(S0 * 1000000) rem 1000000}});
 date({{Y, MO, D}, {H, MI, S0}}) when is_integer(S0) ->
