@@ -6,7 +6,8 @@
 	, sp_chat_del_follower/1
 	, sp_chat_set/1
 	, sp_chat_set_kivi/2
-	, sp_chat_set_pinned_messages/2
+	, sp_chat_set_pinned_messages/5
+	, sp_chat_del_pinned_messages/4
 	, sp_chat_set_starter_blocked_state/2
 	, sp_chat_set_follower_blocked_state/2
 	, sp_chat_set_starter_muted_state/2
@@ -46,10 +47,10 @@
 %% =================================================================================
 %% SP: luna_dev_db.sp_chat_add
 %% =================================================================================
-sp_chat_add(StarterID, FollowerID, KiVi) ->
+sp_chat_add(InStarterID, InFollowerID, InKiVi) ->
     try
 	Query = <<"CALL luna_dev_db.sp_chat_add(?, ?, ?)">>,
-	Params = [StarterID, FollowerID, json(KiVi)],
+	Params = [InStarterID, InFollowerID, json(InKiVi)],
 	case luna_db_pool:do(Query, Params) of 
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
 	    {ok, _, [[2]]} -> {error, ?DBE_CHAT_SAME_ID_AS_SIDES};
@@ -72,30 +73,30 @@ sp_chat_add(StarterID, FollowerID, KiVi) ->
 		      6 -> ?DBI_CHAT_ALREADY_EXIST_FOLLOWER_HAD_BEEN_DELETED;
 		      7 -> ?DBI_CHAT_NEW
 		  end
-		, #luna_chat{ cid = CID
-			    , cra = date(CRA)
-			    , mda = date(MDA)
-			    , starter_id = StarterId
-			    , follower_id = FollowerId 
-			    , last_message_sequence = LastMessageSequence
-			    , last_event_sequence = LastEventSequence 
-			    , pinned_messages = json(PinnedMessages) 
-			    , starter_start_sequence = StarterStartSequence
-			    , starter_delivered_sequence = StarterDeliveredSequence
-			    , starter_seen_sequence = StarterSeenSequence
-			    , starter_is_muted = StarterIsMuted
-			    , starter_is_blocked = StarterIsBlocked
-			    , starter_is_deleted = StarterIsDeleted
-			    , starter_auto_delete = StarterAutoDelete
-			    , follower_start_sequence = FollowerStartSequence
-			    , follower_delivered_sequence = FollowerDeliveredSequence
-			    , follower_seen_sequence = FollowerSeenSequence
-			    , follower_is_muted = FollowerIsMuted
-			    , follower_is_blocked = FollowerIsBlocked
-			    , follower_is_deleted = FollowerIsDeleted
-			    , follower_auto_delete = FollowerAutoDelete
-			    , kivi = json(KiVi)
-			    }
+		, #luna_chat_meta{ cid = CID
+				 , cra = date(CRA)
+				 , mda = date(MDA)
+				 , starter_id = StarterId
+				 , follower_id = FollowerId 
+				 , last_message_sequence = LastMessageSequence
+				 , last_event_sequence = LastEventSequence 
+				 , pinned_messages = pin(json(PinnedMessages)) 
+				 , starter_start_sequence = StarterStartSequence
+				 , starter_delivered_sequence = StarterDeliveredSequence
+				 , starter_seen_sequence = StarterSeenSequence
+				 , starter_is_muted = bool(StarterIsMuted)
+				 , starter_is_blocked = bool(StarterIsBlocked)
+				 , starter_is_deleted = bool(StarterIsDeleted)
+				 , starter_auto_delete = StarterAutoDelete
+				 , follower_start_sequence = FollowerStartSequence
+				 , follower_delivered_sequence = FollowerDeliveredSequence
+				 , follower_seen_sequence = FollowerSeenSequence
+				 , follower_is_muted = bool(FollowerIsMuted)
+				 , follower_is_blocked = bool(FollowerIsBlocked)
+				 , follower_is_deleted = bool(FollowerIsDeleted)
+				 , follower_auto_delete = FollowerAutoDelete
+				 , kivi = json(KiVi)
+				 }
 		}
 	end
     catch
@@ -120,29 +121,29 @@ sp_chat_get_by_cid(CID) ->
 		     , FollowerSeenSequence, FollowerIsMuted, FollowerIsBlocked
 		     , FollowerIsDeleted, FollowerAutoDelete, KiVi 
 		     ]]} -> 
-		{ok, #luna_chat{ cid = CID
-			       , cra = date(CRA)
-			       , mda = date(MDA)
-			       , starter_id = StarterId
-			       , follower_id = FollowerId 
-			       , last_message_sequence = LastMessageSequence
-			       , last_event_sequence = LastEventSequence 
-			       , pinned_messages = json(PinnedMessages) 
-			       , starter_start_sequence = StarterStartSequence
-			       , starter_delivered_sequence = StarterDeliveredSequence
-			       , starter_seen_sequence = StarterSeenSequence
-			       , starter_is_muted = StarterIsMuted
-			       , starter_is_blocked = StarterIsBlocked
-			       , starter_is_deleted = StarterIsDeleted
-			       , starter_auto_delete = StarterAutoDelete
-			       , follower_start_sequence = FollowerStartSequence
-			       , follower_delivered_sequence = FollowerDeliveredSequence
-			       , follower_seen_sequence = FollowerSeenSequence
-			       , follower_is_muted = FollowerIsMuted
-			       , follower_is_blocked = FollowerIsBlocked
-			       , follower_is_deleted = FollowerIsDeleted
-			       , follower_auto_delete = FollowerAutoDelete
-			       , kivi = json(KiVi) }}
+		{ok, #luna_chat_meta{ cid = CID
+				    , cra = date(CRA)
+				    , mda = date(MDA)
+				    , starter_id = StarterId
+				    , follower_id = FollowerId 
+				    , last_message_sequence = LastMessageSequence
+				    , last_event_sequence = LastEventSequence 
+				    , pinned_messages = pin(json(PinnedMessages)) 
+				    , starter_start_sequence = StarterStartSequence
+				    , starter_delivered_sequence = StarterDeliveredSequence
+				    , starter_seen_sequence = StarterSeenSequence
+				    , starter_is_muted = bool(StarterIsMuted)
+				    , starter_is_blocked = bool(StarterIsBlocked)
+				    , starter_is_deleted = bool(StarterIsDeleted)
+				    , starter_auto_delete = StarterAutoDelete
+				    , follower_start_sequence = FollowerStartSequence
+				    , follower_delivered_sequence = FollowerDeliveredSequence
+				    , follower_seen_sequence = FollowerSeenSequence
+				    , follower_is_muted = bool(FollowerIsMuted)
+				    , follower_is_blocked = bool(FollowerIsBlocked)
+				    , follower_is_deleted = bool(FollowerIsDeleted)
+				    , follower_auto_delete = FollowerAutoDelete
+				    , kivi = json(KiVi) }}
 	end
     catch
 	_:Eny -> {error, Eny}
@@ -201,42 +202,42 @@ sp_chat_del_follower(CID) ->
 %% =================================================================================
 %% SP: luna_dev_db.sp_chat_set
 %% =================================================================================
-sp_chat_set(#luna_chat{ cid = CID
-		      , starter_id = StarterId
-		      , follower_id = FollowerId 
-		      , last_message_sequence = LastMessageSequence
-		      , last_event_sequence = LastEventSequence 
-		      , pinned_messages = PinnedMessages 
-		      , starter_start_sequence = StarterStartSequence
-		      , starter_delivered_sequence = StarterDeliveredSequence
-		      , starter_seen_sequence = StarterSeenSequence
-		      , starter_is_muted = StarterIsMuted
-		      , starter_is_blocked = StarterIsBlocked
-		      , starter_is_deleted = StarterIsDeleted
-		      , starter_auto_delete = StarterAutoDelete
-		      , follower_start_sequence = FollowerStartSequence
-		      , follower_delivered_sequence = FollowerDeliveredSequence
-		      , follower_seen_sequence = FollowerSeenSequence
-		      , follower_is_muted = FollowerIsMuted
-		      , follower_is_blocked = FollowerIsBlocked
-		      , follower_is_deleted = FollowerIsDeleted
-		      , follower_auto_delete = FollowerAutoDelete
-		      , kivi = KiVi } = LunaChat) ->
+sp_chat_set(#luna_chat_meta{ cid = CID
+			   , starter_id = StarterId
+			   , follower_id = FollowerId 
+			   , last_message_sequence = LastMessageSequence
+			   , last_event_sequence = LastEventSequence 
+			   , pinned_messages = PinnedMessages 
+			   , starter_start_sequence = StarterStartSequence
+			   , starter_delivered_sequence = StarterDeliveredSequence
+			   , starter_seen_sequence = StarterSeenSequence
+			   , starter_is_muted = StarterIsMuted
+			   , starter_is_blocked = StarterIsBlocked
+			   , starter_is_deleted = StarterIsDeleted
+			   , starter_auto_delete = StarterAutoDelete
+			   , follower_start_sequence = FollowerStartSequence
+			   , follower_delivered_sequence = FollowerDeliveredSequence
+			   , follower_seen_sequence = FollowerSeenSequence
+			   , follower_is_muted = FollowerIsMuted
+			   , follower_is_blocked = FollowerIsBlocked
+			   , follower_is_deleted = FollowerIsDeleted
+			   , follower_auto_delete = FollowerAutoDelete
+			   , kivi = KiVi } = LunaChat) ->
     try
 	Query = <<"CALL luna_dev_db.sp_chat_set(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
 	Params = [ CID, StarterId, FollowerId, LastMessageSequence
-		 , LastEventSequence, json(PinnedMessages), StarterStartSequence
-		 , StarterDeliveredSequence, StarterSeenSequence, StarterIsMuted
-		 , StarterIsBlocked, StarterIsDeleted, StarterAutoDelete
+		 , LastEventSequence, pin(PinnedMessages), StarterStartSequence
+		 , StarterDeliveredSequence, StarterSeenSequence, bool(StarterIsMuted)
+		 , bool(StarterIsBlocked), bool(StarterIsDeleted), StarterAutoDelete
 		 , FollowerStartSequence, FollowerDeliveredSequence
-		 , FollowerSeenSequence, FollowerIsMuted, FollowerIsBlocked
-		 , FollowerIsDeleted, FollowerAutoDelete, json(KiVi) 
+		 , FollowerSeenSequence, bool(FollowerIsMuted), bool(FollowerIsBlocked)
+		 , bool(FollowerIsDeleted), FollowerAutoDelete, json(KiVi) 
 		 ],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
 	    {ok, _, [[2]]} -> {error, ?DBE_INVALID_CID};
 	    {ok, _, [[3, CRA, MDA]]} -> 
-		{ok, LunaChat#luna_chat{mda = date(MDA), cra = date(CRA)}}
+		{ok, LunaChat#luna_chat_meta{mda = date(MDA), cra = date(CRA)}}
 	end
     catch
 	_:Eny -> {error, Eny}
@@ -260,13 +261,28 @@ sp_chat_set_kivi(CID, KiVi) ->
 %% =================================================================================
 %% SP: luna_dev_db.sp_chat_set_pinned_messages
 %% =================================================================================
-sp_chat_set_pinned_messages(CID, PinnedMessages) ->
+sp_chat_set_pinned_messages(CID, LastMessageSequence, LastEventSequence, Pinner, PinnedMessages) ->
     try
-	Query = <<"CALL luna_dev_db.sp_chat_set_pinned_messages(?, ?)">>,
-	Params = [CID, json(PinnedMessages)],
+	Query = <<"CALL luna_dev_db.sp_chat_set_pinned_messages(?, ?, ?, ?, ?)">>,
+	Params = [CID, LastMessageSequence, LastEventSequence, writer(Pinner), pin(PinnedMessages)],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
+	    {ok, _, [[2, MDA, LMeS, LEvS]]} -> {ok, date(MDA), LMeS, LEvS}
+	end
+    catch
+	_:Eny -> {error, Eny}
+    end.
+
+%% =================================================================================
+%% SP: luna_dev_db.sp_chat_del_pinned_messages
+%% =================================================================================
+sp_chat_del_pinned_messages(CID, LastMessageSequence, LastEventSequence, Unpinner) ->
+    try
+	Query = <<"CALL luna_dev_db.sp_chat_del_pinned_messages(?, ?, ?, ?)">>,
+	Params = [CID, LastMessageSequence, LastEventSequence, writer(Unpinner)],
+	case luna_db_pool:do(Query, Params) of
+	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
+	    {ok, _, [[2, MDA, LMeS, LEvS]]} -> {ok, date(MDA), LMeS, LEvS}
 	end
     catch
 	_:Eny -> {error, Eny}
@@ -491,12 +507,12 @@ sp_chat_message_get(CID, From, Length) ->
 								 , body = Body
 								 , objects = object(json(Objects))
 								 , actions = action(json(Actions))
-								 , is_deleted_by_starter = IsDeletedByStarter
-								 , is_deleted_by_follower = IsDeletedByFollower 
+								 , is_deleted_by_starter = bool(IsDeletedByStarter)
+								 , is_deleted_by_follower = bool(IsDeletedByFollower) 
 								 , auto_delete = AutoDelete
 								 , kivi = json(Kivi)
 								 , version = Version
-						 }
+								 }
 					      ]
 			       end
 			     , [], Results)
@@ -634,8 +650,10 @@ type(<<"BLOCK">>) -> 'BLOCK';
 type(<<"UNBLOCK">>) -> 'UNBLOCK'.
 
 writer(<<"STARTER">>) -> 'STARTER';
-writer(<<"FOLLOWER">>) -> 'FOLLOWER'.
-     
+writer(<<"FOLLOWER">>) -> 'FOLLOWER';
+writer('STARTER') -> <<"STARTER">>; 
+writer('FOLLOWER') -> <<"FOLLOWER">>. 
+
 object(Objects) when is_list(Objects) ->
     #{items => Objects};
 object(#{items := Items}) ->
@@ -645,11 +663,12 @@ object(<<"LINK">>) -> 'LINK';
 object('FILE') -> <<"FILE">>; 
 object('LINK') -> <<"LINK">>. 
 
-
 action(Objects) when is_list(Objects) ->
     #{items => Objects};
 action(#{items := Items}) ->
-    json(Items).
+    json(Items). 
 
-
-    
+pin(PinMessages) when is_list(PinMessages) ->
+    #{items => PinMessages};
+pin(#{items := PinMessages}) ->
+    json(PinMessages). 

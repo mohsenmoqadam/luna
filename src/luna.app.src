@@ -5,6 +5,10 @@
   {mod, { luna_app, []}},
   {applications,
    [kernel,
+    mysql,
+    jiffy,
+    erlware_commons,
+    syn,
     stdlib
    ]},
   {env,[]},

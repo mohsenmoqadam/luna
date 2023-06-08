@@ -6,16 +6,24 @@
 -define(GREGORIAN_SECONDS_1970, 62167219200).
 
 -define(DBE_EXCEPTION, 1).
+-define(DBE_INVALID_UID, 2).
 -define(DBE_INVALID_CID, 3).
--define(DBE_ALREADY_SET, 4).
--define(DBE_CHAT_SAME_ID_AS_SIDES, 4).
--define(DBI_CHAT_ALREADY_EXIST, 5).
--define(DBI_CHAT_ALREADY_EXIST_BOTH_SIDES_HAD_BEEN_DELETED, 6).
--define(DBI_CHAT_ALREADY_EXIST_STARTER_HAD_BEEN_DELETED, 7).
--define(DBI_CHAT_ALREADY_EXIST_FOLLOWER_HAD_BEEN_DELETED, 8).
--define(DBI_CHAT_NEW, 8).
+-define(DBE_INVALID_SEQ, 4).
+-define(DBE_ALREADY_SET, 5).
+-define(DBE_CHAT_SAME_ID_AS_SIDES, 6).
+-define(DBI_CHAT_ALREADY_EXIST, 7).
+-define(DBI_CHAT_ALREADY_EXIST_BOTH_SIDES_HAD_BEEN_DELETED, 8).
+-define(DBI_CHAT_ALREADY_EXIST_STARTER_HAD_BEEN_DELETED, 9).
+-define(DBI_CHAT_ALREADY_EXIST_FOLLOWER_HAD_BEEN_DELETED, 10).
+-define(DBI_CHAT_NEW, 11).
 
--record( luna_chat
+-record( luna_chat_state
+       , { chat_meta :: luna_chat_meta()
+	 }
+       ).
+-type luna_chat_state() :: #luna_chat_state{}.
+
+-record( luna_chat_meta
        , { cid :: non_neg_integer()
 	 , cra :: luna_date()
 	 , mda :: null | luna_date()
@@ -41,7 +49,7 @@
 	 , kivi :: luna_json()
 	 }
        ).
--type luna_chat() :: #luna_chat{}.
+-type luna_chat_meta() :: #luna_chat_meta{}.
 
 -record( luna_chat_message
        , { cra :: luna_date()
