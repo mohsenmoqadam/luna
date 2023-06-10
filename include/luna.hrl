@@ -10,15 +10,19 @@
 -define(DBE_INVALID_CID, 3).
 -define(DBE_INVALID_SEQ, 4).
 -define(DBE_ALREADY_SET, 5).
--define(DBE_CHAT_SAME_ID_AS_SIDES, 6).
--define(DBI_CHAT_ALREADY_EXIST, 7).
--define(DBI_CHAT_ALREADY_EXIST_BOTH_SIDES_HAD_BEEN_DELETED, 8).
--define(DBI_CHAT_ALREADY_EXIST_STARTER_HAD_BEEN_DELETED, 9).
--define(DBI_CHAT_ALREADY_EXIST_FOLLOWER_HAD_BEEN_DELETED, 10).
--define(DBI_CHAT_NEW, 11).
+-define(DBE_INVALID_ROL, 6).
+-define(DBE_CHAT_SAME_ID_AS_SIDES, 7).
+-define(DBI_CHAT_ALREADY_EXIST, 8).
+-define(DBI_CHAT_ALREADY_EXIST_BOTH_SIDES_HAD_BEEN_DELETED, 9).
+-define(DBI_CHAT_ALREADY_EXIST_STARTER_HAD_BEEN_DELETED, 10).
+-define(DBI_CHAT_ALREADY_EXIST_FOLLOWER_HAD_BEEN_DELETED, 11).
+-define(DBI_CHAT_NEW, 12).
 
 -record( luna_chat_state
        , { chat_meta :: luna_chat_meta()
+	 , timeout :: non_neg_integer()
+	 , hibernate :: non_neg_integer()
+	 , hibernate_timer :: reference()
 	 }
        ).
 -type luna_chat_state() :: #luna_chat_state{}.

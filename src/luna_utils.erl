@@ -8,6 +8,10 @@
 
 -include("luna.hrl").
 
+json(<<"NULL">>) -> null;
+json(<<"null">>) -> null;
+json('NULL') -> null;
+json(null) -> null;
 json(Input) when is_bitstring(Input) ->
     jiffy:decode(Input, [return_maps]);
 json(Input) when is_map(Input) ->

@@ -22,12 +22,10 @@
        ).
 
 -export([ sp_chat_message_add/10
-	, sp_chat_message_del/5
-	, sp_chat_message_del_by_starter/4
-	, sp_chat_message_del_by_follower/4
+	, sp_chat_message_del/7
 	, sp_chat_message_get/3
-	, sp_chat_message_set/9
-	, sp_chat_message_set_action/4
+	, sp_chat_message_set/10
+	, sp_chat_message_set_action/7
 	]
        ).
 
@@ -80,7 +78,7 @@ sp_chat_add(InStarterID, InFollowerID, InKiVi) ->
 				 , follower_id = FollowerId 
 				 , last_message_sequence = LastMessageSequence
 				 , last_event_sequence = LastEventSequence 
-				 , pinned_messages = pin(json(PinnedMessages)) 
+				 , pinned_messages = json(PinnedMessages) 
 				 , starter_start_sequence = StarterStartSequence
 				 , starter_delivered_sequence = StarterDeliveredSequence
 				 , starter_seen_sequence = StarterSeenSequence
@@ -128,7 +126,7 @@ sp_chat_get_by_cid(CID) ->
 				    , follower_id = FollowerId 
 				    , last_message_sequence = LastMessageSequence
 				    , last_event_sequence = LastEventSequence 
-				    , pinned_messages = pin(json(PinnedMessages)) 
+				    , pinned_messages = json(PinnedMessages) 
 				    , starter_start_sequence = StarterStartSequence
 				    , starter_delivered_sequence = StarterDeliveredSequence
 				    , starter_seen_sequence = StarterSeenSequence
@@ -226,7 +224,7 @@ sp_chat_set(#luna_chat_meta{ cid = CID
     try
 	Query = <<"CALL luna_dev_db.sp_chat_set(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
 	Params = [ CID, StarterId, FollowerId, LastMessageSequence
-		 , LastEventSequence, pin(PinnedMessages), StarterStartSequence
+		 , LastEventSequence, json(PinnedMessages), StarterStartSequence
 		 , StarterDeliveredSequence, StarterSeenSequence, bool(StarterIsMuted)
 		 , bool(StarterIsBlocked), bool(StarterIsDeleted), StarterAutoDelete
 		 , FollowerStartSequence, FollowerDeliveredSequence
@@ -264,7 +262,7 @@ sp_chat_set_kivi(CID, KiVi) ->
 sp_chat_set_pinned_messages(CID, LastMessageSequence, LastEventSequence, Pinner, PinnedMessages) ->
     try
 	Query = <<"CALL luna_dev_db.sp_chat_set_pinned_messages(?, ?, ?, ?, ?)">>,
-	Params = [CID, LastMessageSequence, LastEventSequence, writer(Pinner), pin(PinnedMessages)],
+	Params = [CID, LastMessageSequence, LastEventSequence, writer(Pinner), json(PinnedMessages)],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
 	    {ok, _, [[2, MDA, LMeS, LEvS]]} -> {ok, date(MDA), LMeS, LEvS}
@@ -473,11 +471,11 @@ sp_chat_message_add( CID, StarterId, FollowerId, Writer, MessageSequence
 		   , ReplySequence, Body, Objects, AutoDelete, KiVi ) ->
     try
 	Query = <<"CALL luna_dev_db.sp_chat_message_add(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
-	Params = [ CID, StarterId, FollowerId, Writer, MessageSequence
+	Params = [ CID, StarterId, FollowerId, writer(Writer), MessageSequence
 		 , ReplySequence, Body, object(Objects), AutoDelete, json(KiVi) ],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, CRA, ObjectCount]]} -> {ok, date(CRA), ObjectCount}
+	    {ok, _, [[2, CRA, LMeS]]} -> {ok, date(CRA), LMeS}
 	end
     catch
 	_:Eny -> {error, Eny}
@@ -506,7 +504,7 @@ sp_chat_message_get(CID, From, Length) ->
 								 , writer = writer(Writer)
 								 , body = Body
 								 , objects = object(json(Objects))
-								 , actions = action(json(Actions))
+								 , actions = json(Actions)
 								 , is_deleted_by_starter = bool(IsDeletedByStarter)
 								 , is_deleted_by_follower = bool(IsDeletedByFollower) 
 								 , auto_delete = AutoDelete
@@ -525,46 +523,14 @@ sp_chat_message_get(CID, From, Length) ->
 %% =================================================================================
 %% SP: luna_dev_db.sp_chat_message_del
 %% =================================================================================
-sp_chat_message_del( CID, StarterId, FollowerID
-		   , MessageSequence, LastEventSequence ) ->
+sp_chat_message_del( CID, StarterId, FollowerId, WriterID, MessageSequence, EventSequence, DelType ) ->
     try
-	Query = <<"CALL luna_dev_db.sp_chat_message_del(?, ?, ?, ?, ?)">>,
-	Params = [CID, StarterId, FollowerID, MessageSequence, LastEventSequence],
+	Query = <<"CALL luna_dev_db.sp_chat_message_del(?, ?, ?, ?, ?, ?, ?)">>,
+	Params = [CID, StarterId, FollowerId, WriterID, MessageSequence, EventSequence, del_type(DelType)],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
-	end
-    catch
-	_:Eny -> {error, Eny}
-    end.
-
-%% =================================================================================
-%% SP: luna_dev_db.sp_chat_message_del_by_starter
-%% =================================================================================
-sp_chat_message_del_by_starter( CID, StarterId
-			      , MessageSequence, LastEventSequence ) ->
-    try
-	Query = <<"CALL luna_dev_db.sp_chat_message_del_by_starter(?, ?, ?, ?)">>,
-	Params = [CID, StarterId, MessageSequence, LastEventSequence],
-	case luna_db_pool:do(Query, Params) of
-	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
-	end
-    catch
-	_:Eny -> {error, Eny}
-    end.
-
-%% =================================================================================
-%% SP: luna_dev_db.sp_chat_message_del_by_follower
-%% =================================================================================
-sp_chat_message_del_by_follower( CID, FollowerId
-			       , MessageSequence, LastEventSequence ) ->
-    try
-	Query = <<"CALL luna_dev_db.sp_chat_message_del_by_follower(?, ?, ?, ?)">>,
-	Params = [CID, FollowerId, MessageSequence, LastEventSequence],
-	case luna_db_pool:do(Query, Params) of
-	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
+	    {ok, _, [[2]]} -> {error, ?DBE_INVALID_ROL};
+	    {ok, _, [[3, MDA, LEvS]]} -> {ok, date(MDA), LEvS}
 	end
     catch
 	_:Eny -> {error, Eny}
@@ -573,16 +539,17 @@ sp_chat_message_del_by_follower( CID, FollowerId
 %% =================================================================================
 %% SP: luna_dev_db.sp_chat_message_set
 %% =================================================================================
-sp_chat_message_set( CID, StarterId, FollowerId, MessageSequence
+sp_chat_message_set( CID, StarterId, FollowerId, WriterID, MessageSequence
 		   , EventSequence, Body, Objects, AutoDelete, KiVi ) ->
     try
-	Query = <<"CALL luna_dev_db.sp_chat_message_set(?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
-	Params = [ CID, StarterId, FollowerId, MessageSequence
+	Query = <<"CALL luna_dev_db.sp_chat_message_set(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
+	Params = [ CID, StarterId, FollowerId, WriterID, MessageSequence
 		 , EventSequence, Body, object(Objects)
 		 , AutoDelete, json(KiVi) ],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, MDA, ObjectCount]]} -> {ok, date(MDA), ObjectCount}
+	    {ok, _, [[2]]} -> {error, ?DBE_INVALID_ROL};
+	    {ok, _, [[3, MDA, LEvS]]} -> {ok, date(MDA), LEvS}
 	end
     catch
 	_:Eny -> {error, Eny}
@@ -598,13 +565,16 @@ sp_chat_message_set( CID, StarterId, FollowerId, MessageSequence
 %%                     ]
 %%          }
 %% =================================================================================
-sp_chat_message_set_action(CID, MessageSequence, LastEventSequence, Actions) ->
+sp_chat_message_set_action( CID, StarterId, FollowerId, WriterID
+			  , MessageSequence, LastEventSequence, Actions ) ->
     try
-	Query = <<"CALL luna_dev_db.sp_chat_message_set_action(?, ?, ?, ?)">>,
-	Params = [CID, MessageSequence, LastEventSequence, action(Actions)],
+	Query = <<"CALL luna_dev_db.sp_chat_message_set_action(?, ?, ?, ?, ?, ?, ?)">>,
+	Params = [ CID, StarterId, FollowerId, WriterID
+		 , MessageSequence, LastEventSequence, json(Actions) ],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, MDA]]} -> {ok, date(MDA)}
+	    {ok, _, [[2]]} -> {error, ?DBE_INVALID_ROL};
+	    {ok, _, [[3, MDA, LEvS]]} -> {ok, date(MDA), LEvS}
 	end
     catch
 	_:Eny -> {error, Eny}
@@ -654,6 +624,7 @@ writer(<<"FOLLOWER">>) -> 'FOLLOWER';
 writer('STARTER') -> <<"STARTER">>; 
 writer('FOLLOWER') -> <<"FOLLOWER">>. 
 
+object(null) -> null;
 object(Objects) when is_list(Objects) ->
     #{items => Objects};
 object(#{items := Items}) ->
@@ -661,14 +632,8 @@ object(#{items := Items}) ->
 object(<<"FILE">>) -> 'FILE';
 object(<<"LINK">>) -> 'LINK'; 
 object('FILE') -> <<"FILE">>; 
-object('LINK') -> <<"LINK">>. 
+object('LINK') -> <<"LINK">>.  
 
-action(Objects) when is_list(Objects) ->
-    #{items => Objects};
-action(#{items := Items}) ->
-    json(Items). 
-
-pin(PinMessages) when is_list(PinMessages) ->
-    #{items => PinMessages};
-pin(#{items := PinMessages}) ->
-    json(PinMessages). 
+del_type(one) -> <<"ONE">>;
+del_type(everyone) -> <<"EVERYONE">>.
+     
