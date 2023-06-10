@@ -93,23 +93,23 @@ add(StarterID, FollowerID, KiVi)
 	    { ok
 	    , ?DBI_CHAT_ALREADY_EXIST
 	    , LunaChatMeta
-	    } -> {ok, already_exist, LunaChatMeta};
+	    } -> {ok, already_exist, m(LunaChatMeta, any)};
 	    { ok
 	    , ?DBI_CHAT_ALREADY_EXIST_BOTH_SIDES_HAD_BEEN_DELETED
 	    , LunaChatMeta
-	    } -> {ok, both_sides_had_been_deleted, LunaChatMeta};
+	    } -> {ok, both_sides_had_been_deleted, m(LunaChatMeta, any)};
 	    { ok
 	    , ?DBI_CHAT_ALREADY_EXIST_STARTER_HAD_BEEN_DELETED
 	    , LunaChatMeta
-	    } -> {ok, starter_had_been_deleted, LunaChatMeta};
+	    } -> {ok, starter_had_been_deleted, m(LunaChatMeta, any)};
 	    { ok
 	    , ?DBI_CHAT_ALREADY_EXIST_FOLLOWER_HAD_BEEN_DELETED
 	    , LunaChatMeta
-	    } -> {ok, follower_had_been_deleted, LunaChatMeta};
+	    } -> {ok, follower_had_been_deleted, m(LunaChatMeta, any)};
 	    { ok
 	    , ?DBI_CHAT_NEW
 	    , LunaChatMeta
-	    } -> {ok, new, LunaChatMeta}
+	    } -> {ok, new, m(LunaChatMeta, any)}
 	end
     catch 
 	_:_ -> {error, server_internal_error}
@@ -552,31 +552,7 @@ handle_call( {del, UID}
 handle_call(get, _From, #luna_chat_state{ chat_meta = LCM
 					, timeout = Timeout
 					} = State) ->
-    Reply = #{ cid => LCM#luna_chat_meta.cid
-	     , cra => LCM#luna_chat_meta.cra
-	     , mda => LCM#luna_chat_meta.mda
-	     , starter_id => LCM#luna_chat_meta.starter_id
-	     , follower_id => LCM#luna_chat_meta.follower_id
-	     , last_message_sequence => LCM#luna_chat_meta.last_message_sequence
-	     , last_event_sequence => LCM#luna_chat_meta.last_event_sequence
-	     , pinned_messages => LCM#luna_chat_meta.pinned_messages
-	     , starter_start_sequence => LCM#luna_chat_meta.starter_start_sequence
-	     , starter_delivered_sequence => LCM#luna_chat_meta.starter_delivered_sequence
-	     , starter_seen_sequence => LCM#luna_chat_meta.starter_seen_sequence
-	     , starter_is_muted => LCM#luna_chat_meta.starter_is_muted
-	     , starter_is_blocked => LCM#luna_chat_meta.starter_is_blocked
-	     , starter_is_deleted => LCM#luna_chat_meta.starter_is_deleted
-	     , starter_auto_delete => LCM#luna_chat_meta.starter_auto_delete
-	     , follower_start_sequence => LCM#luna_chat_meta.follower_start_sequence
-	     , follower_delivered_sequence => LCM#luna_chat_meta.follower_delivered_sequence
-	     , follower_seen_sequence => LCM#luna_chat_meta.follower_seen_sequence
-	     , follower_is_muted => LCM#luna_chat_meta.follower_is_muted
-	     , follower_is_blocked => LCM#luna_chat_meta.follower_is_blocked
-	     , follower_is_deleted => LCM#luna_chat_meta.follower_is_deleted
-	     , follower_auto_delete => LCM#luna_chat_meta.follower_auto_delete
-	     , kivi => LCM#luna_chat_meta.kivi
-	     },
-    {reply, {ok, Reply}, cht(State), Timeout};
+    {reply, {ok, m(LCM, any)}, cht(State), Timeout};
 
 %%%===================================================================
 handle_call( {set_blocked_state, UID, BlockedState}
@@ -1379,70 +1355,10 @@ handle_call( {get_messages, UID, From, Len}
 		{reply, {error, invalid_cid}, cht(State), Timeout};
 	    {_, {error, ?DBE_INVALID_UID}} ->
 		{reply, {error, invalid_uid}, cht(State), Timeout};
-	    {starter, {ok, Messages0}} ->
-		Messages = lists:foldl(fun(#luna_chat_message{is_deleted_by_starter =  true}, ACC) -> ACC;
-					  (#luna_chat_message{ cra = CRA
-							     , mda = MDA
-							     , type = Type
-							     , sequence = Sequence
-							     , reply_sequence = ReplySequence
-							     , writer = Writer
-							     , body = Body
-							     , objects = Objects
-							     , actions = Actions
-							     , is_deleted_by_follower = IsDeletedByFollower 
-							     , auto_delete = AutoDelete
-							     , kivi = Kivi
-							     , version = Version
-							     }, ACC) ->
-					       ACC ++ [#{ cra => CRA
-							, mda => MDA
-							, type => Type
-							, sequence => Sequence
-							, reply_sequence => ReplySequence
-							, writer => Writer
-							, body => Body
-							, objects => Objects
-							, actions => Actions
-							, is_deleted_by_follower => IsDeletedByFollower
-							, auto_delete => AutoDelete
-							, kivi => Kivi
-							, version => Version
-							}]
-				       end, [], Messages0),
-		{reply, {ok, Messages}, cht(State), Timeout};
-	    {follower, {ok, Messages0}} ->
-		Messages = lists:foldl(fun(#luna_chat_message{is_deleted_by_follower =  true}, ACC) -> ACC;
-					  (#luna_chat_message{ cra = CRA
-							     , mda = MDA
-							     , type = Type
-							     , sequence = Sequence
-							     , reply_sequence = ReplySequence
-							     , writer = Writer
-							     , body = Body
-							     , objects = Objects
-							     , actions = Actions
-							     , is_deleted_by_starter = IsDeletedByStarter 
-							     , auto_delete = AutoDelete
-							     , kivi = Kivi
-							     , version = Version
-							     }, ACC) ->
-					       ACC ++ [#{ cra => CRA
-							, mda => MDA
-							, type => Type
-							, sequence => Sequence
-							, reply_sequence => ReplySequence
-							, writer => Writer
-							, body => Body
-							, objects => Objects
-							, actions => Actions
-							, is_deleted_by_starter => IsDeletedByStarter
-							, auto_delete => AutoDelete
-							, kivi => Kivi
-							, version => Version
-							}]
-				       end, [], Messages0), 
-                {reply, {ok, Messages}, cht(State), Timeout}
+	    {starter, {ok, Messages}} ->
+		{reply, {ok, m(Messages, 'STARTER')}, cht(State), Timeout};
+	    {follower, {ok, Messages}} -> 
+                {reply, {ok, m(Messages, 'FOLLOWER')}, cht(State), Timeout}
 	end
     catch
 	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
@@ -1491,23 +1407,8 @@ handle_call( {get_medias, UID, Type, From, Len}
 		{reply, {error, invalid_cid}, cht(State), Timeout};
 	    {_, {error, ?DBE_INVALID_UID}} ->
 		{reply, {error, invalid_uid}, cht(State), Timeout};
-	    {_, {ok, Messages0}} ->
-		Messages = lists:foldl(fun(#luna_chat_object{ cra = CRA
-							    , type = Type_
-							    , sequence = Sequence
-							    , mime = Mime
-							    , body = Body
-							    , oid = Oid
-							    }, ACC) ->
-					       ACC ++ [#{ cra => CRA
-							, type => Type_
-							, sequence => Sequence
-							, mime => Mime
-							, body => Body
-							, oid => Oid
-							}]
-				       end, [], Messages0),
-		{reply, {ok, Messages}, cht(State), Timeout}
+	    {_, {ok, Messages}} ->
+		{reply, {ok, m(Messages, any)}, cht(State), Timeout}
 	end
     catch
 	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
@@ -1603,4 +1504,79 @@ is_valid_opjects( [ #{ <<"type">> := Type
     is_valid_opjects(R);
 is_valid_opjects(_) -> false.
 
+m(L, M) when is_list(L) ->
+    m(L, M, []);
+m(#luna_chat_message{} = LCM, 'FOLLOWER') ->
+    #{ cra => LCM#luna_chat_message.cra
+     , mda => LCM#luna_chat_message.mda
+     , type => LCM#luna_chat_message.type
+     , sequence => LCM#luna_chat_message.sequence
+     , reply_sequence => LCM#luna_chat_message.reply_sequence
+     , writer => LCM#luna_chat_message.writer
+     , body => LCM#luna_chat_message.body
+     , objects => LCM#luna_chat_message.objects
+     , actions => LCM#luna_chat_message.actions
+     , is_deleted_by_starter => LCM#luna_chat_message.is_deleted_by_starter
+     , auto_delete => LCM#luna_chat_message.auto_delete
+     , kivi => LCM#luna_chat_message.kivi
+     , version => LCM#luna_chat_message.version
+     };
+m(#luna_chat_message{} = LCM, 'STARTER') ->
+    #{ cra => LCM#luna_chat_message.cra
+     , mda => LCM#luna_chat_message.mda
+     , type => LCM#luna_chat_message.type
+     , sequence => LCM#luna_chat_message.sequence
+     , reply_sequence => LCM#luna_chat_message.reply_sequence
+     , writer => LCM#luna_chat_message.writer
+     , body => LCM#luna_chat_message.body
+     , objects => LCM#luna_chat_message.objects
+     , actions => LCM#luna_chat_message.actions
+     , is_deleted_by_follower => LCM#luna_chat_message.is_deleted_by_follower
+     , auto_delete => LCM#luna_chat_message.auto_delete
+     , kivi => LCM#luna_chat_message.kivi
+     , version => LCM#luna_chat_message.version
+     };
+m(#luna_chat_meta{} = LCM, _) ->
+    #{ cid => LCM#luna_chat_meta.cid
+     , cra => LCM#luna_chat_meta.cra
+     , mda => LCM#luna_chat_meta.mda
+     , starter_id => LCM#luna_chat_meta.starter_id
+     , follower_id => LCM#luna_chat_meta.follower_id
+     , last_message_sequence => LCM#luna_chat_meta.last_message_sequence
+     , last_event_sequence => LCM#luna_chat_meta.last_event_sequence
+     , pinned_messages => LCM#luna_chat_meta.pinned_messages
+     , starter_start_sequence => LCM#luna_chat_meta.starter_start_sequence
+     , starter_delivered_sequence => LCM#luna_chat_meta.starter_delivered_sequence
+     , starter_seen_sequence => LCM#luna_chat_meta.starter_seen_sequence
+     , starter_is_muted => LCM#luna_chat_meta.starter_is_muted
+     , starter_is_blocked => LCM#luna_chat_meta.starter_is_blocked
+     , starter_is_deleted => LCM#luna_chat_meta.starter_is_deleted
+     , starter_auto_delete => LCM#luna_chat_meta.starter_auto_delete
+     , follower_start_sequence => LCM#luna_chat_meta.follower_start_sequence
+     , follower_delivered_sequence => LCM#luna_chat_meta.follower_delivered_sequence
+     , follower_seen_sequence => LCM#luna_chat_meta.follower_seen_sequence
+     , follower_is_muted => LCM#luna_chat_meta.follower_is_muted
+     , follower_is_blocked => LCM#luna_chat_meta.follower_is_blocked
+     , follower_is_deleted => LCM#luna_chat_meta.follower_is_deleted
+     , follower_auto_delete => LCM#luna_chat_meta.follower_auto_delete
+     , kivi => LCM#luna_chat_meta.kivi
+     };    
+m(#luna_chat_object{type = 'FILE'} = LCO, _) ->
+    #{ cra => LCO#luna_chat_object.cra
+     , type => LCO#luna_chat_object.type
+     , sequence => LCO#luna_chat_object.sequence
+     , mime => LCO#luna_chat_object.mime
+     , body => LCO#luna_chat_object.body
+     , oid => LCO#luna_chat_object.oid
+     };
+m(#luna_chat_object{type = 'LINK'} = LCO, _) ->
+    #{ cra => LCO#luna_chat_object.cra
+     , type => LCO#luna_chat_object.type
+     , sequence => LCO#luna_chat_object.sequence
+     , body => LCO#luna_chat_object.body
+     }.
 
+m([], _M, []) -> [];
+m([], _M, Acc) -> Acc;
+m([E|R], M, Acc) ->
+    m(R, M, Acc ++ [m(E, M)]).
