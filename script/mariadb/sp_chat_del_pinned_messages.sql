@@ -1,11 +1,10 @@
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_set_pinned_messages`%
-CREATE PROCEDURE `luna_dev_db`.`sp_chat_set_pinned_messages`(
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_del_pinned_messages`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_del_pinned_messages`(
 	  IN in_cid BIGINT
 	, IN in_last_message_sequence BIGINT
 	, IN in_last_event_sequence BIGINT	
-	, IN in_pinner ENUM('STARTER', 'FOLLOWER')
-	, IN in_pinned_messages JSON
+	, IN in_unpinner ENUM('STARTER', 'FOLLOWER')
 )
 BEGIN
 	-- RC:
@@ -14,9 +13,9 @@ BEGIN
 	
 	DECLARE v_cra DATETIME(6);
 	DECLARE v_mda DATETIME(6);
-	DECLARE v_last_message_sequence BIGINT;	
+	DECLARE v_last_message_sequence BIGINT;
 	DECLARE v_last_event_sequence BIGINT;
-	 
+
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
 		ROLLBACK;
@@ -35,14 +34,14 @@ BEGIN
 	START TRANSACTION;	
 	-- Update chat_meta
 	UPDATE luna_dev_db.chat_meta 
-	SET pinned_messages = in_pinned_messages
+	SET pinned_messages = "[]"
 	  , last_message_sequence = v_last_message_sequence
 	  , last_event_sequence = v_last_event_sequence
 	  , mda = v_mda 
 	WHERE cid = in_cid;
 	-- Save PIN message
 	INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
-	VALUES (in_cid, v_cra, 'PIN', v_last_message_sequence, in_pinner, "");
+	VALUES (in_cid, v_cra, 'UNPIN', v_last_message_sequence, in_unpinner, "");
 	-- TRANSACTION: END
 	COMMIT;		
 		
@@ -54,4 +53,4 @@ END
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_set_pinned_messages`(5, 6, 0, 'STARTER', '[2,3]');
+-- CALL `luna_dev_db`.`sp_chat_del_pinned_messages`(5, 7, 1, 'FOLLOWER');

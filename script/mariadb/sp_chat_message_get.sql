@@ -1,11 +1,11 @@
 USE luna_dev_db;
 
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`fn_get_chat_messages`%
-CREATE PROCEDURE `luna_dev_db`.`fn_get_chat_messages`(
-      IN cid_ BIGINT
-    , IN from_message_sequence_ BIGINT
-	, IN length_ INT 
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_message_get`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_message_get`(
+      IN in_cid BIGINT
+    , IN in_from_message_sequence BIGINT
+	, IN in_length INT 
 )
 BEGIN
 	-- RC:
@@ -37,14 +37,13 @@ BEGIN
 	     , kivi AS 'KIVI'
 	     , version AS 'VERSION'
 	FROM luna_dev_db.chat_message
-	WHERE cid = cid_ AND sequence >= from_message_sequence_
-	ORDER BY sequence DESC
-	LIMIT length_; 
+	WHERE cid = in_cid AND sequence >= in_from_message_sequence
+	LIMIT in_length; 
 	
 END
 %
 DELIMITER ;
 
 -- EXAMPLE
--- CALL `luna_dev_db`.`fn_get_chat_messages`(6, 0, 5);
+-- CALL `luna_dev_db`.`sp_chat_message_get`(6, 0, 5);
 

@@ -1,14 +1,24 @@
 DELIMITER %
 DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_set_starter_blocked_state`%
 CREATE PROCEDURE `luna_dev_db`.`sp_chat_set_starter_blocked_state`(
-	  IN cid_ BIGINT
-	, IN is_blocked_ BOOL
+	  IN in_cid BIGINT
+	, IN in_is_blocked BOOL
 )
 BEGIN
 	-- RC:
 	-- 1: EXCEPTION
-	-- 2: DONE	
-	 
+	-- 2: INVALID CID
+	-- 3: ALREADY SET
+	-- 4: DONE	
+	
+	DECLARE v_cra DATETIME(6);
+	DECLARE v_mda DATETIME(6);
+	DECLARE v_cid BIGINT DEFAULT NULL;
+	DECLARE v_starter_id BIGINT DEFAULT NULL;
+	DECLARE v_starter_is_blocked BOOLEAN;
+	DECLARE v_last_message_sequence BIGINT;
+	DECLARE v_action_type VARCHAR(8);
+
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
 		ROLLBACK;
@@ -18,23 +28,43 @@ BEGIN
 	-- Be careful that the latest version of chat_meta is available in the cache layer and we trust it,
 	-- Therefore, in order to reduce the processing load, we do not check the correctness of the information again.
 
-   	SET @mda = NOW();
-   
-	-- TRANSACTION: START
-	START TRANSACTION;
-	-- Update chat_meta
-	UPDATE luna_dev_db.chat_meta 
-		SET starter_is_blocked = is_blocked_ 
-		  , mda = @mda 
-	WHERE cid = cid_;
-	-- Update chat_uid2cid 
-	UPDATE luna_dev_db.chat_uid2cid SET mda = @mda WHERE cid = cid_;
-	-- TRANSACTION: END
-	COMMIT;
+   	SET v_cra = NOW(6);
+   	SET v_mda = v_cra;
+	
+   	-- Getting some meta if exists.
+	SELECT cid, starter_id, starter_is_blocked, last_message_sequence 
+	INTO v_cid, v_starter_id, v_starter_is_blocked, v_last_message_sequence 
+	FROM `luna_dev_db`.`chat_meta` 
+	WHERE cid = in_cid;
 
-	-- Return result.
-	SELECT 2 AS 'RC', @mda AS 'MDA';
-		
+	-- MAIN BUSINESS
+	IF(ISNULL(v_cid)) THEN
+		SELECT 2 AS 'RC';
+	ELSEIF(v_starter_is_blocked = in_is_blocked) THEN
+		SELECT 3 AS 'RC';
+	ELSE
+		SET v_last_message_sequence = v_last_message_sequence + 1;
+		IF (in_is_blocked = TRUE) THEN
+			SET v_action_type = 'BLOCK';
+		ELSE
+			SET v_action_type = 'UNBLOCK';
+		END IF;
+		-- TRANSACTION: START
+		START TRANSACTION;	
+		-- Update chat_meta
+		UPDATE luna_dev_db.chat_meta 
+			SET starter_is_blocked = in_is_blocked
+			  , last_message_sequence = v_last_message_sequence
+			  , mda = v_mda 
+		WHERE cid = in_cid;
+		-- Save DELETE message
+		INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, type, sequence, writer, body)
+		VALUES (in_cid, v_cra, v_action_type, v_last_message_sequence, 'FOLLOWER', "");
+		-- TRANSACTION: END
+		COMMIT;		
+		-- Return result.
+		SELECT 4 AS 'RC', v_mda AS 'MDA', v_last_message_sequence AS 'LAST_MESSAGE_SEQUENCE';
+	END IF;		
 END
 %
 DELIMITER ;

@@ -1,80 +1,78 @@
 DELIMITER %
 DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_set`%
 CREATE PROCEDURE `luna_dev_db`.`sp_chat_set`(
-	  IN cid_ BIGINT
-	, IN cra_ DATETIME
-	, IN mda_ DATETIME
-    , IN starter_id_ BIGINT
-	, IN follower_id_ BIGINT
-	, IN last_message_sequence_ BIGINT
-	, IN last_event_sequence_ BIGINT
-	, IN pinned_messages_ JSON
-	, IN starter_start_sequence_ BIGINT
-	, IN starter_delivered_sequence_ BIGINT
-	, IN starter_seen_sequence_ BIGINT
-	, IN starter_is_muted_ BOOL 
-	, IN starter_is_blocked_ BOOL
-	, IN starter_is_deleted_ BOOL
-	, IN starter_auto_delete_ INT
-	, IN follower_start_sequence_ BIGINT
-	, IN follower_delivered_sequence_ BIGINT
-	, IN follower_seen_sequence_ BIGINT
-	, IN follower_is_muted_ BOOL
-	, IN follower_is_blocked_ BOOL
-	, IN follower_is_deleted_ BOOL 
-	, IN follower_auto_delete_ INT
-	, IN kivi_ JSON 
+	  IN in_cid BIGINT
+	, IN in_starter_id BIGINT
+	, IN in_follower_id BIGINT
+	, IN in_last_message_sequence BIGINT
+	, IN in_last_event_sequence BIGINT
+	, IN in_pinned_messages JSON
+	, IN in_starter_start_sequence BIGINT
+	, IN in_starter_delivered_sequence BIGINT
+	, IN in_starter_seen_sequence BIGINT
+	, IN in_starter_is_muted BOOL 
+	, IN in_starter_is_blocked BOOL
+	, IN in_starter_is_deleted BOOL
+	, IN in_starter_auto_delete INT
+	, IN in_follower_start_sequence BIGINT
+	, IN in_follower_delivered_sequence BIGINT
+	, IN in_follower_seen_sequence BIGINT
+	, IN in_follower_is_muted BOOL
+	, IN in_follower_is_blocked BOOL
+	, IN in_follower_is_deleted BOOL 
+	, IN in_follower_auto_delete INT
+	, IN in_kivi JSON 
 )
 BEGIN
 	-- RC:
 	-- 1: EXCEPTION
 	-- 2: INVALID CID
 	-- 3: DONE	
-	 
+	
+	DECLARE v_cid BIGINT DEFAULT NULL;
+	DECLARE v_cra DATETIME(6);
+	DECLARE v_mda DATETIME(6);
+	
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
 		ROLLBACK;
 		SELECT 1 AS 'RC';
 	END;
    
-	SET @cid = NULL;
+	SET v_mda = NOW(6);
 
 	-- Make result.
-	SELECT cid FROM luna_dev_db.chat_meta WHERE cid = cid_ AND starter_id = starter_id_ AND follower_id = follower_id_ INTO @cid;
-	IF (ISNULL(@cid)) THEN
+	SELECT cid, cra INTO v_cid, v_cra FROM luna_dev_db.chat_meta WHERE cid = in_cid;
+	IF (ISNULL(v_cid)) THEN
 		SELECT 2 AS 'RC';
 	ELSE
-		-- TRANSACTION: START
-		START TRANSACTION;
 		UPDATE luna_dev_db.chat_meta  
-		SET cra = cra_
-		  , mda = mda_
-		  , starter_id = starter_id_
-		  , follower_id = follower_id_
-		  , last_message_sequence = last_message_sequence_
-		  , last_event_sequence = last_event_sequence_
-		  , pinned_messages = pinned_messages_
-		  , starter_start_sequence = starter_start_sequence_
-		  , starter_delivered_sequence = starter_delivered_sequence_
-		  , starter_seen_sequence = starter_seen_sequence_
-		  , starter_is_muted = starter_is_muted_
-		  , starter_is_blocked = starter_is_blocked_
-		  , starter_is_deleted = starter_is_deleted_
-		  , starter_auto_delete = starter_auto_delete_
-		  , follower_start_sequence = follower_start_sequence_
-		  , follower_delivered_sequence = follower_delivered_sequence_
-		  , follower_seen_sequence = follower_seen_sequence_
-		  , follower_is_muted = follower_is_muted_
-		  , follower_is_blocked = follower_is_blocked_
-		  , follower_is_deleted = follower_is_deleted_ 
-		  , follower_auto_delete = follower_auto_delete_
-		  , kivi = kivi_
-		WHERE cid = cid_;
-		SELECT 3 AS 'RC';
+		SET starter_id = in_starter_id
+		  , follower_id = in_follower_id
+		  , last_message_sequence = in_last_message_sequence
+		  , last_event_sequence = in_last_event_sequence
+		  , pinned_messages = in_pinned_messages
+		  , starter_start_sequence = in_starter_start_sequence
+		  , starter_delivered_sequence = in_starter_delivered_sequence
+		  , starter_seen_sequence = in_starter_seen_sequence
+		  , starter_is_muted = in_starter_is_muted
+		  , starter_is_blocked = in_starter_is_blocked
+		  , starter_is_deleted = in_starter_is_deleted
+		  , starter_auto_delete = in_starter_auto_delete
+		  , follower_start_sequence = in_follower_start_sequence
+		  , follower_delivered_sequence = in_follower_delivered_sequence
+		  , follower_seen_sequence = in_follower_seen_sequence
+		  , follower_is_muted = in_follower_is_muted
+		  , follower_is_blocked = in_follower_is_blocked
+		  , follower_is_deleted = in_follower_is_deleted 
+		  , follower_auto_delete = in_follower_auto_delete
+		  , kivi = in_kivi
+		WHERE cid = v_cid;
+		SELECT 3 AS 'RC', v_cra AS 'CRA', v_mda AS 'MDA';
 	END IF;
 END
 %
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_set`(6, "2023-06-03 17:24:29", "2023-06-03 17:24:29", 1, 2, 1, 1, "[]", 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, "{}");
+-- CALL `luna_dev_db`.`sp_chat_set`(6, 1, 2, 1, 1, "{}", 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, "{}");

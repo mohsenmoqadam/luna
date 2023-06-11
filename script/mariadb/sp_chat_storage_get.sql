@@ -1,13 +1,13 @@
 USE luna_dev_db;
 
 DELIMITER %
-DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_get_chat_storage`%
-CREATE PROCEDURE `luna_dev_db`.`sp_get_chat_storage`(
-      IN cid_ BIGINT
-    , IN uid_ BIGINT  
-    , IN type_ ENUM('FILE', 'LINK')  
-    , IN from_message_sequence_ BIGINT
-	, IN length_ INT 
+DROP PROCEDURE IF EXISTS `luna_dev_db`.`sp_chat_storage_get`%
+CREATE PROCEDURE `luna_dev_db`.`sp_chat_storage_get`(
+      IN in_cid BIGINT
+    , IN in_uid BIGINT  
+    , IN in_type ENUM('FILE', 'LINK')  
+    , IN in_from_message_sequence BIGINT
+	, IN in_length INT 
 )
 BEGIN
 	-- RC:
@@ -25,20 +25,18 @@ BEGIN
 	
 	SELECT 2 AS 'RC'
 	     , cra AS 'CRA'
-	     , type AS 'TYPE'
 	     , sequence AS 'SEQUENCE'
 	     , mime AS 'WRITER'
 	     , body AS 'BODY'
 	     , oid AS 'OBJECTS'
 	FROM `luna_dev_db`.`chat_storage`
-	WHERE uid = uid_ AND cid = cid_ AND type = type_ AND sequence >= from_message_sequence_
-	ORDER BY sequence DESC
-	LIMIT length_; 
+	WHERE uid = in_uid AND cid = in_cid AND type = in_type AND sequence >= in_from_message_sequence
+	LIMIT in_length; 
 	
 END
 %
 DELIMITER ;
 
 -- EXAMPLE
--- CALL `luna_dev_db`.`sp_get_chat_storage`(6, 1, 'FILE', 1, 10);
+-- CALL `luna_dev_db`.`sp_chat_storage_get`(5, 1, 'FILE', 1, 10);
 
