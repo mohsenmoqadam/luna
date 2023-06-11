@@ -82,7 +82,8 @@ add(StarterID, FollowerID) ->
 	  {error, invalid_params} |
 	  {error, server_internal_error}.
 add(StarterID, FollowerID, KiVi) 
-  when is_integer(StarterID) andalso is_integer(FollowerID) andalso 
+  when is_integer(StarterID) andalso 
+       is_integer(FollowerID) andalso 
        (is_map(KiVi) orelse KiVi =:= null) ->
     try 
 	case sp_chat_add(StarterID, FollowerID, KiVi) of
@@ -97,15 +98,24 @@ add(StarterID, FollowerID, KiVi)
 	    { ok
 	    , ?DBI_CHAT_ALREADY_EXIST_BOTH_SIDES_HAD_BEEN_DELETED
 	    , LunaChatMeta
-	    } -> {ok, both_sides_had_been_deleted, m(LunaChatMeta, any)};
+	    } -> { ok
+		 , both_sides_had_been_deleted
+		 , m(LunaChatMeta, any)
+		 };
 	    { ok
 	    , ?DBI_CHAT_ALREADY_EXIST_STARTER_HAD_BEEN_DELETED
 	    , LunaChatMeta
-	    } -> {ok, starter_had_been_deleted, m(LunaChatMeta, any)};
+	    } -> { ok
+		 , starter_had_been_deleted
+		 , m(LunaChatMeta, any)
+		 };
 	    { ok
 	    , ?DBI_CHAT_ALREADY_EXIST_FOLLOWER_HAD_BEEN_DELETED
 	    , LunaChatMeta
-	    } -> {ok, follower_had_been_deleted, m(LunaChatMeta, any)};
+	    } -> { ok
+		 , follower_had_been_deleted
+		 , m(LunaChatMeta, any)
+		 };
 	    { ok
 	    , ?DBI_CHAT_NEW
 	    , LunaChatMeta
@@ -339,7 +349,8 @@ set_message( CID, WID, Sequence, Body
 set_message( CID, WID, Sequence, Body
 	   , Version, #{items := ObjectList} = Objects, KiVi ) ->
     case is_valid_opjects(ObjectList) of
-	true -> set_message_(CID, WID, Sequence, Version, Body, Objects, KiVi);
+	true -> set_message_( CID, WID, Sequence, Version
+			    , Body, Objects, KiVi );
 	false -> {error, invalid_objects}
     end;
 set_message(_, _, _, _, _, _, _) ->  {error, invalid_params}.
@@ -503,31 +514,51 @@ handle_call( {del, UID}
     try
 	DBR = case {LCM, UID} of
 		  { #luna_chat_meta{ starter_id = UID 
-				   , starter_is_deleted = true }
+				   , starter_is_deleted = true 
+				   }
 		  , UID 
 		  } -> {starter, {error, ?DBE_INVALID_CID}};
 		  { #luna_chat_meta{ cid = CID
-				   , starter_id = UID }
+				   , starter_id = UID 
+				   }
 		  , UID
 		  } -> {starter, sp_chat_del_starter(CID)};
 		  { #luna_chat_meta{ follower_id = UID 
-				   , follower_is_deleted = true }
+				   , follower_is_deleted = true 
+				   }
 		  , UID } -> {follower, {error, ?DBE_INVALID_CID}};
 		  { #luna_chat_meta{ cid = CID
-				   , follower_id = UID }
+				   , follower_id = UID 
+				   }
 		  , UID
 		  } -> {follower, sp_chat_del_follower(CID)};
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->
-		{reply, {ok, done}, cht(State), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, LMeS, SStS, SDeS, SSeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = LMeS
@@ -536,7 +567,11 @@ handle_call( {del, UID}
 					 , starter_delivered_sequence = SDeS
 					 , starter_seen_sequence = SSeS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, LMeS, SStS, SDeS, SSeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = LMeS
@@ -545,10 +580,18 @@ handle_call( {del, UID}
 					 , follower_delivered_sequence = SDeS
 					 , follower_seen_sequence = SSeS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 
 %%%===================================================================
@@ -561,7 +604,8 @@ handle_call(get, _From, #luna_chat_state{ chat_meta = LCM
 handle_call( {set_blocked_state, UID, BlockedState}
 	   , _From
 	   , #luna_chat_state{ chat_meta = LCM
-			     , timeout = Timeout } = State
+			     , timeout = Timeout 
+			     } = State
 	   ) ->
     try
 	DBR = case {LCM, UID} of
@@ -576,7 +620,11 @@ handle_call( {set_blocked_state, UID, BlockedState}
 		  {#luna_chat_meta{ cid = CID
 				  , starter_id = UID
 				  }, UID} ->
-		      {starter, sp_chat_set_starter_blocked_state(CID, BlockedState)};
+		      { starter
+		      , sp_chat_set_starter_blocked_state( CID
+							 , BlockedState
+							 )
+		      };
 		  {#luna_chat_meta{ follower_id = UID 
 				  , follower_is_deleted = true
 				  }, UID } ->
@@ -588,33 +636,65 @@ handle_call( {set_blocked_state, UID, BlockedState}
 		  {#luna_chat_meta{ cid = CID
 				  , follower_id = UID
 				  }, UID } ->
-		      {follower, sp_chat_set_follower_blocked_state(CID, BlockedState)};
+		      { follower
+		      , sp_chat_set_follower_blocked_state( CID
+							  , BlockedState
+							  )
+		      };
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
-		{reply, {ok, done}, cht(State), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, LMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = LMeS
 					 , starter_is_blocked = BlockedState
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, LMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = LMeS
 					 , follower_is_blocked = BlockedState
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {set_muted_state, UID, MutedState}
@@ -636,7 +716,11 @@ handle_call( {set_muted_state, UID, MutedState}
 		  {#luna_chat_meta{ cid = CID
 				  , starter_id = UID
 				  }, UID} ->
-		      {starter, sp_chat_set_starter_muted_state(CID, MutedState)};
+		      { starter
+		      , sp_chat_set_starter_muted_state( CID
+						       , MutedState
+						       )
+		      };
 		  {#luna_chat_meta{ follower_id = UID
                                   , follower_is_deleted = true
                                   }, UID } ->
@@ -648,33 +732,65 @@ handle_call( {set_muted_state, UID, MutedState}
 		  {#luna_chat_meta{ cid = CID
 				  , follower_id = UID
 				  }, UID } ->
-		      {follower, sp_chat_set_follower_muted_state(CID, MutedState)};
+		      { follower
+		      , sp_chat_set_follower_muted_state( CID
+							, MutedState
+							)
+		      };
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
-		{reply, {ok, done}, cht(State), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, LMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = LMeS
 					 , starter_is_muted = MutedState
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, LMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = LMeS
 					 , follower_is_muted = MutedState
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {set_kivi, KiVi}
@@ -686,13 +802,25 @@ handle_call( {set_kivi, KiVi}
     try
 	case sp_chat_set_kivi(LCM#luna_chat_meta.cid, KiVi) of
 	    {error, ?DBE_EXCEPTION} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {ok, MDA} ->
 		NLCM = LCM#luna_chat_meta{mda = MDA},
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {set_auto_del, UID, AutoDel}
@@ -714,7 +842,11 @@ handle_call( {set_auto_del, UID, AutoDel}
 		  {#luna_chat_meta{ cid = CID
 				  , starter_id = UID
 				  }, UID} ->
-		      {starter, sp_chat_set_starter_auto_delete(CID, AutoDel)};
+		      { starter
+		      , sp_chat_set_starter_auto_delete( CID
+						       , AutoDel
+						       )
+		      };
 		  {#luna_chat_meta{ follower_id = UID
                                   , follower_is_deleted = true
                                   }, UID } ->
@@ -726,31 +858,63 @@ handle_call( {set_auto_del, UID, AutoDel}
 		  {#luna_chat_meta{ cid = CID
 				  , follower_id = UID
 				  }, UID } ->
-		      {follower, sp_chat_set_follower_auto_delete(CID, AutoDel)};
+		      { follower
+		      , sp_chat_set_follower_auto_delete( CID
+							, AutoDel
+							)
+		      };
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
-		{reply, {ok, done}, cht(State), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , starter_auto_delete = AutoDel
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , follower_auto_delete = AutoDel
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {set_delivered, UID, NS}
@@ -776,7 +940,11 @@ handle_call( {set_delivered, UID, NS}
 		  {#luna_chat_meta{ cid = CID
 				  , starter_id = UID
 				  }, UID} ->
-		      {starter, sp_chat_set_starter_delivered_sequence(CID, NS)};
+		      { starter
+		      , sp_chat_set_starter_delivered_sequence( CID
+							      , NS
+							      )
+		      };
 		  {#luna_chat_meta{ follower_id = UID
 				  , follower_is_deleted = true
                                   }, UID } ->
@@ -792,33 +960,69 @@ handle_call( {set_delivered, UID, NS}
 		  {#luna_chat_meta{ cid = CID
 				  , follower_id = UID
 				  }, UID } ->
-		      {follower, sp_chat_set_follower_delivered_sequence(CID, NS)};
+		      { follower
+		      , sp_chat_set_follower_delivered_sequence( CID
+							       , NS
+							       )
+		      };
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
-		{reply, {ok, done}, State, Timeout};
+		{ reply
+		, {ok, done}
+		, State
+		, Timeout
+		};
 	    {starter, {ok, MDA}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , starter_delivered_sequence = NS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , follower_delivered_sequence = NS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {set_seen, UID, NS}
@@ -848,7 +1052,9 @@ handle_call( {set_seen, UID, NS}
 		  {#luna_chat_meta{ cid = CID
 				  , starter_id = UID
 				  }, UID} ->
-		      {starter, sp_chat_set_starter_seen_sequence(CID, NS)};
+		      { starter
+		      , sp_chat_set_starter_seen_sequence(CID, NS)
+		      };
 		  {#luna_chat_meta{ follower_id = UID
 				  , follower_is_deleted = true
                                   }, UID } ->
@@ -868,33 +1074,67 @@ handle_call( {set_seen, UID, NS}
 		  {#luna_chat_meta{ cid = CID
 				  , follower_id = UID
 				  }, UID } ->
-		      {follower, sp_chat_set_follower_seen_sequence(CID, NS)};
+		      { follower
+		      , sp_chat_set_follower_seen_sequence(CID, NS)
+		      };
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
-		{reply, {ok, done}, cht(State), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , starter_seen_sequence = NS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , follower_seen_sequence = NS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {add_message, WID, ReplySequence, Body, Objects, KiVi}
@@ -916,14 +1156,17 @@ handle_call( {add_message, WID, ReplySequence, Body, Objects, KiVi}
 				  , starter_start_sequence = SStS
 				  , starter_delivered_sequence = SDeS
 				  , follower_id = FID
-				  }, WID} when ReplySequence =:= null orelse 
-					       (ReplySequence >= SStS andalso 
-						ReplySequence =< SDeS) ->
-		      {starter, sp_chat_message_add( CID, WID, FID, 'STARTER' 
-						   , LMeS, ReplySequence, Body
-						   , Objects, SAuD, KiVi )};
-		  {#luna_chat_meta{ starter_id = WID
-                                  }, WID}  ->
+				  }, WID} 
+		    when ReplySequence =:= null orelse 
+			 (ReplySequence >= SStS andalso 
+			  ReplySequence =< SDeS) ->
+		      { starter
+		      , sp_chat_message_add( CID, WID, FID, 'STARTER' 
+					   , LMeS, ReplySequence, Body
+					   , Objects, SAuD, KiVi 
+					   )
+		      };
+		  {#luna_chat_meta{starter_id = WID}, WID}  ->
 		      {starter, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ follower_id = WID
                                   , follower_is_deleted = true
@@ -936,42 +1179,74 @@ handle_call( {add_message, WID, ReplySequence, Body, Objects, KiVi}
 				  , follower_start_sequence = FStS
 				  , follower_delivered_sequence = FDeS
 				  , starter_id = SID
-				  }, WID} when ReplySequence =:= null orelse 
-					       (ReplySequence >= FStS andalso 
-						ReplySequence =< FDeS) ->
-		      {follower, sp_chat_message_add( CID, SID, WID, 'FOLLOWER' 
-						    , LMeS, ReplySequence, Body
-						    , Objects, FAuD, KiVi )};
-		  {#luna_chat_meta{ follower_id = WID
-                                  }, WID}  ->
+				  }, WID} 
+		    when ReplySequence =:= null orelse 
+			 (ReplySequence >= FStS andalso 
+			  ReplySequence =< FDeS) ->
+		      { follower
+		      , sp_chat_message_add( CID, SID, WID, 'FOLLOWER' 
+					   , LMeS, ReplySequence, Body
+					   , Objects, FAuD, KiVi 
+					   )
+		      };
+		  {#luna_chat_meta{follower_id = WID}, WID}  ->
 		      {follower, {error, ?DBE_INVALID_SEQ}};
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, NLMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, NLMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
-handle_call( {set_message, WID, Sequence, Version, Body, Objects, KiVi}
+handle_call( { set_message, WID, Sequence, Version
+	     , Body, Objects, KiVi }
 	   , _From
 	   , #luna_chat_state{ chat_meta = LCM
 			     , timeout = Timeout
@@ -992,10 +1267,14 @@ handle_call( {set_message, WID, Sequence, Version, Body, Objects, KiVi}
 				  , follower_id = FID
 				  }, WID} when Sequence >= SStS 
 					       , Sequence =< SDeS ->
-		      {starter, sp_chat_message_set( CID, WID, FID, WID, Sequence  
-						   , LEvS, Version, Body, Objects, SAuD, KiVi )};
-		  {#luna_chat_meta{ starter_id = WID
-                                  }, WID}  ->
+		      { starter
+		      , sp_chat_message_set( CID, WID, FID, WID
+					   , Sequence, LEvS, Version
+					   , Body, Objects
+					   , SAuD, KiVi 
+					   )
+		      };
+		  {#luna_chat_meta{starter_id = WID}, WID}  ->
 		      {starter, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ follower_id = WID
                                   , follower_is_deleted = true
@@ -1010,37 +1289,72 @@ handle_call( {set_message, WID, Sequence, Version, Body, Objects, KiVi}
 				  , starter_id = SID
 				  }, WID} when Sequence >= FStS
 					       , Sequence =< FDeS ->
-		      {follower, sp_chat_message_set( CID, SID, WID, WID, Sequence
-						    , LEvS, Version, Body, Objects, FAuD, KiVi )};
-		  {#luna_chat_meta{ follower_id = WID
-                                  }, WID}  ->
+		      { follower
+		      , sp_chat_message_set( CID, SID, WID, WID
+					   , Sequence, LEvS, Version
+					   , Body, Objects, FAuD, KiVi 
+					   )
+		      };
+		  {#luna_chat_meta{follower_id = WID}, WID}  ->
 		      {follower, {error, ?DBE_INVALID_SEQ}};
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_ROL}} ->
-		{reply, {error, invalid_role}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_role}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, NLEvS, _LMeV}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, NLEvS, _LMeV}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {del_message, WID, Sequence, DelType}
@@ -1061,11 +1375,15 @@ handle_call( {del_message, WID, Sequence, DelType}
 				  , starter_start_sequence = SStS
 				  , starter_delivered_sequence = SDeS
 				  , follower_id = FID
-				  }, WID} when Sequence >= SStS 
-					       , Sequence =< SDeS ->
-		      {starter, sp_chat_message_del(CID, WID, FID, WID, Sequence, LEvS, DelType)};
-		  {#luna_chat_meta{ starter_id = WID
-                                  }, WID}  ->
+				  }, WID} 
+		    when Sequence >= SStS 
+			 , Sequence =< SDeS ->
+		      { starter
+		      , sp_chat_message_del(CID, WID, FID, WID
+					   , Sequence, LEvS, DelType
+					   )
+		      };
+		  {#luna_chat_meta{starter_id = WID}, WID}  ->
 		      {starter, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ follower_id = WID
                                   , follower_is_deleted = true
@@ -1077,38 +1395,74 @@ handle_call( {del_message, WID, Sequence, DelType}
 				  , follower_start_sequence = FStS
 				  , follower_delivered_sequence = FDeS
 				  , starter_id = SID
-				  }, WID} when Sequence >= FStS
-					       , Sequence =< FDeS ->
-		      {follower, sp_chat_message_del(CID, SID, WID, WID, Sequence, LEvS, DelType)};
-		  {#luna_chat_meta{ follower_id = WID
-                                  }, WID}  ->
+				  }, WID} 
+		    when Sequence >= FStS
+			 , Sequence =< FDeS ->
+		      { follower
+		      , sp_chat_message_del( CID, SID, WID, WID
+					   , Sequence, LEvS, DelType
+					   )
+		      };
+		  {#luna_chat_meta{follower_id = WID}, WID}  ->
 		      {follower, {error, ?DBE_INVALID_SEQ}};
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_ROL}} ->
-		{reply, {error, invalid_role}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_role}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 
 %%%===================================================================
@@ -1132,9 +1486,13 @@ handle_call( {set_message_action, WID, Sequence, Action}
 				  , follower_id = FID
 				  }, WID} when Sequence >= SStS 
 					       , Sequence =< SDeS ->
-		      {starter, sp_chat_message_set_action(CID, WID, FID, WID, Sequence, LEvS, Action)};
-		  {#luna_chat_meta{ starter_id = WID
-                                  }, WID}  ->
+		      { starter
+		      , sp_chat_message_set_action( CID, WID, FID
+						  , WID, Sequence
+						  , LEvS, Action
+						  )
+		      };
+		  {#luna_chat_meta{starter_id = WID}, WID}  ->
 		      {starter, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ follower_id = WID
                                   , follower_is_deleted = true
@@ -1148,36 +1506,72 @@ handle_call( {set_message_action, WID, Sequence, Action}
 				  , starter_id = SID
 				  }, WID} when Sequence >= FStS
 					       , Sequence =< FDeS ->
-		      {follower, sp_chat_message_set_action(CID, SID, WID, WID, Sequence, LEvS, Action)};
-		  {#luna_chat_meta{ follower_id = WID
-                                  }, WID}  ->
+		      { follower
+		      , sp_chat_message_set_action( CID, SID, WID
+						  , WID, Sequence
+						  , LEvS, Action
+						  )
+		      };
+		  {#luna_chat_meta{follower_id = WID}, WID}  ->
 		      {follower, {error, ?DBE_INVALID_SEQ}};
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_ROL}} ->
-		{reply, {error, invalid_role}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_role}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
@@ -1195,7 +1589,8 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
                       {starter, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ starter_id = UID
                                   , pinned_messages = OldPinnedMessages
-                                  }, UID } when OldPinnedMessages =:= PinnedMessages ->
+                                  }, UID }
+		    when OldPinnedMessages =:= PinnedMessages ->
                       {starter, {error, ?DBE_ALREADY_SET}};
 		  {#luna_chat_meta{ cid = CID
 				  , last_message_sequence = LMeS
@@ -1208,7 +1603,14 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
 			  false -> 
 			      {starter, {error, ?DBE_INVALID_SEQ}};
 			  true ->
-			      {starter, sp_chat_set_pinned_messages(CID, LMeS, LEvS, 'STARTER', PinnedMessages)}
+			      { starter
+			      , sp_chat_set_pinned_messages( CID
+							   , LMeS
+							   , LEvS
+							   , 'STARTER'
+							   , PinnedMessages
+							   )
+			      }
 		      end;
 		  {#luna_chat_meta{ follower_id = UID
                                   , follower_is_deleted = true
@@ -1216,7 +1618,8 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
                       {follower, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ follower_id = UID
                                   , pinned_messages = OldPinnedMessages
-                                 }, UID } when OldPinnedMessages =:= PinnedMessages ->
+                                 }, UID } 
+		    when OldPinnedMessages =:= PinnedMessages ->
                       {follower, {error, ?DBE_ALREADY_SET}};
 		  {#luna_chat_meta{ cid = CID
 				  , last_message_sequence = LMeS
@@ -1229,36 +1632,75 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
 			  false -> 
 			      {follower, {error, ?DBE_INVALID_SEQ}};
 			  true ->
-			      {follower, sp_chat_set_pinned_messages(CID, LMeS, LEvS, 'FOLLOWER', PinnedMessages)}
+			      { follower
+			      , sp_chat_set_pinned_messages( CID
+							   , LMeS
+							   , LEvS
+							   , 'FOLLOWER'
+							   , PinnedMessages
+							   )
+			      }
 		      end;
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->   
-                {reply, {ok, done}, cht(State), Timeout};		
+                { reply
+		, {ok, done}
+		, cht(State)
+		, Timeout
+		};		
 	    {starter, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {del_pin_message, UID}
@@ -1278,7 +1720,13 @@ handle_call( {del_pin_message, UID}
 				  , last_message_sequence = LMeS
 				  , last_event_sequence = LEvS
 				  }, UID} ->
-		      {starter, sp_chat_del_pinned_messages(CID, LMeS, LEvS, 'STARTER')};
+		      { starter
+		      , sp_chat_del_pinned_messages( CID
+						   , LMeS
+						   , LEvS
+						   , 'STARTER'
+						   )
+		      };
 		  {#luna_chat_meta{ follower_id = UID
                                   , follower_is_deleted = true
                                   }, UID } ->
@@ -1288,31 +1736,61 @@ handle_call( {del_pin_message, UID}
 				  , last_message_sequence = LMeS
 				  , last_event_sequence = LEvS
 				  }, UID} -> 
-		      {follower, sp_chat_del_pinned_messages(CID, LMeS, LEvS, 'FOLLOWER')};
+		      { follower
+		      , sp_chat_del_pinned_messages( CID
+						   , LMeS
+						   , LEvS
+						   , 'FOLLOWER'
+						   )
+		      };
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		};
 	    {follower, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
-		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout}
+		{ reply
+		, {ok, done}
+		, cht(State#luna_chat_state{chat_meta = NLCM})
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {get_messages, UID, From, Len}
@@ -1351,20 +1829,48 @@ handle_call( {get_messages, UID, From, Len}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {starter, {ok, Messages}} ->
-		{reply, {ok, m(Messages, 'STARTER')}, cht(State), Timeout};
+		{ reply
+		, {ok, m(Messages, 'STARTER')}
+		, cht(State)
+		, Timeout
+		};
 	    {follower, {ok, Messages}} -> 
-                {reply, {ok, m(Messages, 'FOLLOWER')}, cht(State), Timeout}
+                { reply
+		, {ok, m(Messages, 'FOLLOWER')}
+		, cht(State)
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 %%%===================================================================
 handle_call( {get_medias, UID, Type, From, Len}
@@ -1383,9 +1889,10 @@ handle_call( {get_medias, UID, Type, From, Len}
 				  , starter_id = UID
 				  , starter_start_sequence = SStS
 				  }, UID} when From >= SStS ->
-		      {starter, sp_chat_storage_get(CID, UID, Type, From, Len)};
-		  {#luna_chat_meta{ starter_id = UID
-                                  }, UID}  ->
+		      { starter
+		      , sp_chat_storage_get(CID, UID, Type, From, Len)
+		      };
+		  {#luna_chat_meta{starter_id = UID}, UID}  ->
 		      {starter, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ follower_id = UID
                                   , follower_is_deleted = true
@@ -1395,26 +1902,51 @@ handle_call( {get_medias, UID, Type, From, Len}
 				  , follower_id = UID
 				  , follower_start_sequence = FStS
 				  }, UID} when From >= FStS ->
-		      {follower, sp_chat_storage_get(CID, UID, Type, From, Len)};
-		  {#luna_chat_meta{ follower_id = UID
-                                  }, UID}  ->
+		      { follower
+		      , sp_chat_storage_get(CID, UID, Type, From, Len)
+		      };
+		  {#luna_chat_meta{follower_id = UID}, UID}  ->
 		      {follower, {error, ?DBE_INVALID_SEQ}};
 		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
 	      end,
 	case DBR of
 	    {_, {error, ?DBE_EXCEPTION}} -> 
-		{reply, {error, server_internal_error}, cht(State), Timeout};
+		{ reply
+		, {error, server_internal_error}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_SEQ}} ->
-		{reply, {error, invalid_seq}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_seq}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_CID}} ->
-		{reply, {error, invalid_cid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_cid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
-		{reply, {error, invalid_uid}, cht(State), Timeout};
+		{ reply
+		, {error, invalid_uid}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {ok, Messages}} ->
-		{reply, {ok, m(Messages, any)}, cht(State), Timeout}
+		{ reply
+		, {ok, m(Messages, any)}
+		, cht(State)
+		, Timeout
+		}
 	end
     catch
-	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
+	_:_ -> { reply
+	       , {error, server_internal_error}
+	       , cht(State)
+	       , Timeout
+	       }
     end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -1426,9 +1958,13 @@ handle_cast(_Request, State) ->
 handle_info( timeout
 	   , #luna_chat_state{hibernate = Hibernate} = State ) ->
     HTiR = erlang:send_after(Hibernate, self(), stop),
-    {noreply, State#luna_chat_state{hibernate_timer = HTiR}, hibernate};
-handle_info(stop, #luna_chat_state{hibernate_timer = HTiR} = State) 
-when is_reference(HTiR) ->
+    { noreply
+    , State#luna_chat_state{hibernate_timer = HTiR}
+    , hibernate
+    };
+handle_info( stop
+	   , #luna_chat_state{hibernate_timer = HTiR} = State
+	   ) when is_reference(HTiR) ->
     {stop, normal, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -1472,7 +2008,8 @@ is_valid_pins(LMeS, StS, DeS, #{items := PinnedMessages}) ->
     is_valid_pins_(LMeS, StS, DeS, PinnedMessages);
 is_valid_pins(_, _, _, _) -> false.
 is_valid_pins_(_LMeS, _StS, _DeS, []) -> true;
-is_valid_pins_(LMeS, StS, DeS, [E|R]) when E >= StS, E =< LMeS, E =< DeS ->
+is_valid_pins_(LMeS, StS, DeS, [E|R]) 
+  when E >= StS, E =< LMeS, E =< DeS ->
     is_valid_pins_(LMeS, StS, DeS, R);
 is_valid_pins_(_LMeS, _StS, _DeS, _PinnedMessages) -> false.
 
