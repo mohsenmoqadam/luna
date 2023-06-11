@@ -27,9 +27,9 @@
 	 , add_message/4
 	 , add_message/5
 	 , add_message/6
-	 , set_message/4
 	 , set_message/5
 	 , set_message/6
+	 , set_message/7
 	 , del_message/4
 	 , set_message_action/4
 	 , add_pin_message/3
@@ -58,7 +58,7 @@
 	 , sp_chat_del_pinned_messages/4
 	 , sp_chat_set_kivi/2
 	 , sp_chat_message_add/10
-	 , sp_chat_message_set/10
+	 , sp_chat_message_set/11
 	 , sp_chat_message_del/7
 	 , sp_chat_message_set_action/7
 	 , sp_chat_message_get/3
@@ -310,50 +310,53 @@ add_message_(_, _, _, _, _, _) ->  {error, invalid_params}.
 
 %%%=== API Function: set_message/4,5,6 ===============================
 %%% It changes one message of the chat.
-set_message(CID, WID, Sequence, Body) ->
-    set_message(CID, WID, Sequence, Body, null, null).
-set_message(CID, WID, Sequence, Body, Objects) ->
-    set_message(CID, WID, Sequence, Body, Objects, null).
+set_message(CID, WID, Sequence, Version, Body) ->
+    set_message(CID, WID, Sequence, Version, Body, null, null).
+set_message(CID, WID, Sequence, Version, Body, Objects) ->
+    set_message(CID, WID, Sequence, Version, Body, Objects, null).
 -spec set_message( non_neg_integer(), non_neg_integer()
-		 , non_neg_integer(), binary(), map(), map() ) ->
+		 , non_neg_integer(), non_neg_integer()
+		 , binary(), map(), map() ) ->
 	  {ok, done} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
-	  {error, invalid_role} | 
+	  {error, invalid_role} |
+	  {error, invalid_version} |
 	  {error, invalid_body} |
 	  {error, invalid_objects} | 
 	  {error, invalid_params} |
 	  {error, server_internal_error}. 
-set_message(_, _, _, <<"">>, _, _) -> {error, invalid_body};
-set_message(CID, WID, Sequence, Body, Objects, KiVi) 
+set_message(_, _, _, _, <<"">>, _, _) -> {error, invalid_body};
+set_message(CID, WID, Sequence, Version, Body, Objects, KiVi) 
   when Objects =:= #{} orelse 
        Objects =:= null ->
-    set_message_(CID, WID, Sequence, Body, null, KiVi);
+    set_message_(CID, WID, Sequence, Version, Body, null, KiVi);
 set_message( CID, WID, Sequence, Body
-	   , #{<<"items">> := ObjectList}, KiVi ) ->
+	   , Version, #{<<"items">> := ObjectList}, KiVi ) ->
     set_message( CID, WID, Sequence, Body
-	       , #{items => ObjectList}, KiVi );
+	       , Version, #{items => ObjectList}, KiVi );
 set_message( CID, WID, Sequence, Body
-	   , #{items := ObjectList} = Objects, KiVi ) ->
+	   , Version, #{items := ObjectList} = Objects, KiVi ) ->
     case is_valid_opjects(ObjectList) of
-	true -> set_message_(CID, WID, Sequence, Body, Objects, KiVi);
+	true -> set_message_(CID, WID, Sequence, Version, Body, Objects, KiVi);
 	false -> {error, invalid_objects}
     end;
-set_message(_, _, _, _, _, _) ->  {error, invalid_params}.
-set_message_(CID, WID, Sequence, Body, Objects, KiVi) 
+set_message(_, _, _, _, _, _, _) ->  {error, invalid_params}.
+set_message_(CID, WID, Sequence, Version, Body, Objects, KiVi) 
   when ( is_integer(CID) andalso 
 	 is_integer(WID) andalso
 	 is_integer(Sequence) andalso
+	 is_integer(Version) andalso
 	 is_binary(Body) 
        ) andalso
        ( is_map(KiVi) orelse
 	 KiVi =:= null
        ) ->
     call( CID
-        , {set_message, WID, Sequence, Body, Objects, KiVi}
+        , {set_message, WID, Sequence, Version, Body, Objects, KiVi}
         );
-set_message_(_, _, _, _, _, _) ->  {error, invalid_params}.
+set_message_(_, _, _, _, _, _, _) ->  {error, invalid_params}.
 
 %%%=== API Function: del_message/4 ===================================
 %%% It deletes one message from the chat.
@@ -968,7 +971,7 @@ handle_call( {add_message, WID, ReplySequence, Body, Objects, KiVi}
 	_:_ -> {reply, {error, server_internal_error}, cht(State), Timeout}
     end;
 %%%===================================================================
-handle_call( {set_message, WID, Sequence, Body, Objects, KiVi}
+handle_call( {set_message, WID, Sequence, Version, Body, Objects, KiVi}
 	   , _From
 	   , #luna_chat_state{ chat_meta = LCM
 			     , timeout = Timeout
@@ -990,7 +993,7 @@ handle_call( {set_message, WID, Sequence, Body, Objects, KiVi}
 				  }, WID} when Sequence >= SStS 
 					       , Sequence =< SDeS ->
 		      {starter, sp_chat_message_set( CID, WID, FID, WID, Sequence  
-						   , LEvS, Body, Objects, SAuD, KiVi )};
+						   , LEvS, Version, Body, Objects, SAuD, KiVi )};
 		  {#luna_chat_meta{ starter_id = WID
                                   }, WID}  ->
 		      {starter, {error, ?DBE_INVALID_SEQ}};
@@ -1008,7 +1011,7 @@ handle_call( {set_message, WID, Sequence, Body, Objects, KiVi}
 				  }, WID} when Sequence >= FStS
 					       , Sequence =< FDeS ->
 		      {follower, sp_chat_message_set( CID, SID, WID, WID, Sequence
-						    , LEvS, Body, Objects, FAuD, KiVi )};
+						    , LEvS, Version, Body, Objects, FAuD, KiVi )};
 		  {#luna_chat_meta{ follower_id = WID
                                   }, WID}  ->
 		      {follower, {error, ?DBE_INVALID_SEQ}};
@@ -1025,12 +1028,12 @@ handle_call( {set_message, WID, Sequence, Body, Objects, KiVi}
 		{reply, {error, invalid_role}, cht(State), Timeout};
 	    {_, {error, ?DBE_INVALID_UID}} ->
 		{reply, {error, invalid_uid}, cht(State), Timeout};
-	    {starter, {ok, MDA, NLEvS}} ->
+	    {starter, {ok, MDA, NLEvS, _LMeV}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
 		{reply, {ok, done}, cht(State#luna_chat_state{chat_meta = NLCM}), Timeout};
-	    {follower, {ok, MDA, NLEvS}} ->
+	    {follower, {ok, MDA, NLEvS, _LMeV}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
@@ -1213,7 +1216,7 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
                       {follower, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ follower_id = UID
                                   , pinned_messages = OldPinnedMessages
-                                  }, UID } when OldPinnedMessages =:= PinnedMessages ->
+                                 }, UID } when OldPinnedMessages =:= PinnedMessages ->
                       {follower, {error, ?DBE_ALREADY_SET}};
 		  {#luna_chat_meta{ cid = CID
 				  , last_message_sequence = LMeS

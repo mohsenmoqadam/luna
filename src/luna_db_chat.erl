@@ -24,7 +24,7 @@
 -export([ sp_chat_message_add/10
 	, sp_chat_message_del/7
 	, sp_chat_message_get/3
-	, sp_chat_message_set/10
+	, sp_chat_message_set/11
 	, sp_chat_message_set_action/7
 	]
        ).
@@ -540,16 +540,17 @@ sp_chat_message_del( CID, StarterId, FollowerId, WriterID, MessageSequence, Even
 %% SP: luna_dev_db.sp_chat_message_set
 %% =================================================================================
 sp_chat_message_set( CID, StarterId, FollowerId, WriterID, MessageSequence
-		   , EventSequence, Body, Objects, AutoDelete, KiVi ) ->
+		   , EventSequence, Version, Body, Objects, AutoDelete, KiVi ) ->
     try
-	Query = <<"CALL luna_dev_db.sp_chat_message_set(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
+	Query = <<"CALL luna_dev_db.sp_chat_message_set(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)">>,
 	Params = [ CID, StarterId, FollowerId, WriterID, MessageSequence
-		 , EventSequence, Body, object(Objects)
+		 , EventSequence, Version, Body, object(Objects)
 		 , AutoDelete, json(KiVi) ],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
 	    {ok, _, [[2]]} -> {error, ?DBE_INVALID_ROL};
-	    {ok, _, [[3, MDA, LEvS]]} -> {ok, date(MDA), LEvS}
+	    {ok, _, [[3]]} -> {error, ?DBE_INVALID_VER};
+	    {ok, _, [[4, MDA, LEvS, LMeV]]} -> {ok, date(MDA), LEvS, LMeV}
 	end
     catch
 	_:Eny -> {error, Eny}
