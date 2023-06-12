@@ -15,7 +15,7 @@
 -export( [ add/2
 	 , add/3
 	 , del/2
-	 , get/1
+	 , get/2
 	 , block/2
 	 , unblock/2
 	 , mute/2
@@ -72,12 +72,12 @@
 %%% It creates a new chat and returns the chat's meta.  
 add(StarterID, FollowerID) ->
     add(StarterID, FollowerID, null).
--spec add(non_neg_integer(), non_neg_integer(), map()) ->
-	  {ok, new, luna_chat_meta()} | 
-	  {ok, already_exist, luna_chat_meta()} |
-	  {ok, starter_had_been_deleted, luna_chat_meta()} |
-	  {ok, follower_had_been_deleted, luna_chat_meta()} |
-	  {ok, both_sides_had_been_deleted, luna_chat_meta()} |
+-spec add(starter_id(), follower_id(), map()) ->
+	  {ok, new, map()} | 
+	  {ok, already_exist, map()} |
+	  {ok, starter_had_been_deleted, map()} |
+	  {ok, follower_had_been_deleted, map()} |
+	  {ok, both_sides_had_been_deleted, map()} |
 	  {error, same_starter_and_follower} |
 	  {error, invalid_params} |
 	  {error, server_internal_error}.
@@ -128,8 +128,8 @@ add(_, _, _) -> {error, invalid_params}.
 
 %%%=== API Function: del/2 ===========================================
 %%% It deletes a chat for a user whose identification is: UID.
--spec del(non_neg_integer(), non_neg_integer()) ->
-	  {ok, done} | 
+-spec del(cid(), uid()) ->
+	  {ok, luna_date()} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -141,19 +141,22 @@ del(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: get/1 ===========================================
 %%% It returns chat meta.
--spec get(non_neg_integer()) ->
-	  {ok, done} | 
+-spec get(cid(), uid()) ->
+	  {ok, map()} |
+	  {error, invalid_cid} |
+	  {error, invalid_uid} |
 	  {error, invalid_params} |
 	  {error, server_internal_error}. 
-get(CID) 
-  when is_integer(CID) ->
-    call(CID, get);
-get(_) -> {error, invalid_params}.
+get(CID, UID) 
+  when is_integer(CID) andalso is_integer(UID) ->
+    call(CID, {get, UID});
+get(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: block/2 =========================================
 %%% It blocks a user whose identification is: UID.
--spec block(non_neg_integer(), non_neg_integer()) ->
+-spec block(cid(), uid()) ->
 	  {ok, done} | 
+	  {ok, already_blocked} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -568,7 +571,7 @@ handle_call( {del, UID}
 					 , starter_seen_sequence = SSeS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, m(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -581,7 +584,7 @@ handle_call( {del, UID}
 					 , follower_seen_sequence = SSeS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, m(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -595,11 +598,41 @@ handle_call( {del, UID}
     end;
 
 %%%===================================================================
-handle_call(get, _From, #luna_chat_state{ chat_meta = LCM
-					, timeout = Timeout
-					} = State) ->
-    {reply, {ok, m(LCM, any)}, cht(State), Timeout};
-
+handle_call({get, UID}, _From, #luna_chat_state{ chat_meta = LCM
+					       , timeout = Timeout
+					       } = State) ->
+    try
+	DBR = case {LCM, UID} of
+		  {#luna_chat_meta{ starter_id = UID 
+				  , starter_is_deleted = true
+				  }, UID } ->
+		      {starter, {error, ?DBE_INVALID_CID}};
+		  {#luna_chat_meta{starter_id = UID}, UID} ->
+		      {starter, LCM};
+		  {#luna_chat_meta{ follower_id = UID 
+				  , follower_is_deleted = true
+				  }, UID } ->
+		      {starter, {error, ?DBE_INVALID_CID}};
+		  {#luna_chat_meta{follower_id = UID}, UID } ->
+		      {follower, LCM};
+		  _Else -> {unknown, {error, ?DBE_INVALID_UID}}
+	      end,
+	case DBR of
+	    {_, {error, ?DBE_INVALID_CID}} ->
+		{reply, {error, invalid_cid}, cht(State), Timeout};
+	    {_, {error, ?DBE_INVALID_UID}} ->
+		{reply, {error, invalid_uid}, cht(State), Timeout};
+	    {_, LCM} ->
+		{reply, {ok, m(LCM, any)}, cht(State), Timeout}
+	end
+    catch
+	_:_ -> 
+	    { reply
+	    , {error, server_internal_error}
+	    , cht(State)
+	    , Timeout
+	    }
+    end;
 %%%===================================================================
 handle_call( {set_blocked_state, UID, BlockedState}
 	   , _From
@@ -664,7 +697,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
 		{ reply
-		, {ok, done}
+		, {ok, already_blocked}
 		, cht(State)
 		, Timeout
 		};
@@ -674,7 +707,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 					 , starter_is_blocked = BlockedState
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, m(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -684,7 +717,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 					 , follower_is_blocked = BlockedState
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, m(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}

@@ -29,24 +29,24 @@
 -type luna_chat_state() :: #luna_chat_state{}.
 
 -record( luna_chat_meta
-       , { cid :: non_neg_integer()
+       , { cid :: cid()
 	 , cra :: luna_date()
 	 , mda :: null | luna_date()
-	 , starter_id :: non_neg_integer()
-	 , follower_id :: non_neg_integer()
-	 , last_message_sequence :: non_neg_integer()
-	 , last_event_sequence :: non_neg_integer()
+	 , starter_id :: starter_id()
+	 , follower_id :: follower_id()
+	 , last_message_sequence :: seq()
+	 , last_event_sequence :: seq()
 	 , pinned_messages :: luna_json()
-	 , starter_start_sequence :: non_neg_integer()
-	 , starter_delivered_sequence  :: non_neg_integer()
-	 , starter_seen_sequence :: non_neg_integer()
+	 , starter_start_sequence :: seq()
+	 , starter_delivered_sequence :: seq()
+	 , starter_seen_sequence :: seq()
 	 , starter_is_muted :: boolean()
 	 , starter_is_blocked :: boolean()
 	 , starter_is_deleted :: boolean()
 	 , starter_auto_delete :: null | non_neg_integer()
-	 , follower_start_sequence :: non_neg_integer()
-	 , follower_delivered_sequence :: non_neg_integer()
-	 , follower_seen_sequence :: non_neg_integer()
+	 , follower_start_sequence :: seq()
+	 , follower_delivered_sequence :: seq()
+	 , follower_seen_sequence :: seq()
 	 , follower_is_muted :: boolean()
 	 , follower_is_blocked :: boolean()
 	 , follower_is_deleted :: boolean()
@@ -60,8 +60,8 @@
        , { cra :: luna_date()
 	 , mda :: null | luna_date()
 	 , type :: luna_chat_message_type()
-	 , sequence :: non_neg_integer()
-	 , reply_sequence :: null | non_neg_integer()
+	 , sequence :: seq()
+	 , reply_sequence :: null | seq()
 	 , writer :: luna_chat_message_writer()
 	 , body :: binary()
 	 , objects :: luna_json()
@@ -90,6 +90,11 @@
 -type luna_chat_message_type() :: 'MESSAGE' | 'CREATE' | 'DELETE' | 'MUTE' | 'UNMUTE' | 'BLOCK' |  'UNBLOCK'.
 -type luna_chat_message_writer() :: 'STARTER' | 'FOLLOWER'.
 -type luna_chat_object_type() :: 'FILE' | 'LINK'.
+-type starter_id() :: non_neg_integer().
+-type follower_id() :: non_neg_integer().
+-type cid() :: non_neg_integer().
+-type seq() :: non_neg_integer().
+-type uid() :: starter_id() | follower_id().
 
 -ifdef(TEST).
 -define(LOG_ERROR(Format, Args), ct:print(default, 50, Format, Args)).
