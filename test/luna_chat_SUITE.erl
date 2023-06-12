@@ -31,6 +31,7 @@ all() ->
     , get_simplex    
     , del_simplex
     , block_simplex
+    , unblock_simplex
     ].
 
 add_simplex(_Config) ->
@@ -322,10 +323,56 @@ block_simplex(_Config) ->
 
     {error, invalid_uid} = luna_chat:block(CID, rand:uniform(1000000)),
     {error, invalid_cid} = luna_chat:block(rand:uniform(1000000), StarterId1),
-    {ok, already_blocked} = luna_chat:block(CID, StarterId1),
-    {ok, already_blocked} = luna_chat:block(CID, FollowerId1),
+    {ok, already_set} = luna_chat:block(CID, StarterId1),
+    {ok, already_set} = luna_chat:block(CID, FollowerId1),
     {error, invalid_params} = luna_chat:block(a, b),
     
     ok.
 
+unblock_simplex(_) ->
+    %%=== New chat without KiVi
+    StarterId1 = rand:uniform(1000000),
+    FollowerId1 = rand:uniform(1000000),
+
+    { ok
+    , new
+    , #{ cid := CID
+       , cra := CRA
+       } = CM1
+    } = luna_chat:add(StarterId1, FollowerId1),
+    
+    {ok, already_set} = luna_chat:unblock(CID, StarterId1),
+    {ok, already_set} = luna_chat:unblock(CID, FollowerId1),
+
+    {ok, #{cid := CID}} = luna_chat:block(CID, StarterId1),
+    {ok, #{cid := CID}} = luna_chat:block(CID, FollowerId1),
+    
+    
+    { ok
+    , #{ cid := CID
+       , cra := CRA
+       , mda := MDA_S1
+       , last_message_sequence := 4 
+       , starter_is_blocked := false
+       }
+    } = luna_chat:unblock(CID, StarterId1),
+    ?assert(is_tuple(ec_date:parse(binary_to_list(MDA_S1)))),
+
+    { ok
+    , #{ cid := CID
+       , cra := CRA
+       , mda := MDA_F1
+       , last_message_sequence := 5
+       , follower_is_blocked := false
+       }
+    } = luna_chat:unblock(CID, FollowerId1),
+    ?assert(is_tuple(ec_date:parse(binary_to_list(MDA_F1)))),
+
+    {error, invalid_uid} = luna_chat:unblock(CID, rand:uniform(1000000)),
+    {error, invalid_cid} = luna_chat:unblock(rand:uniform(1000000), StarterId1),
+    {ok, already_set} = luna_chat:unblock(CID, StarterId1),
+    {ok, already_set} = luna_chat:unblock(CID, FollowerId1),
+    {error, invalid_params} = luna_chat:unblock(a, b),
+    
+    ok.
     

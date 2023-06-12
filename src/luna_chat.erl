@@ -156,7 +156,7 @@ get(_, _) -> {error, invalid_params}.
 %%% It blocks a user whose identification is: UID.
 -spec block(cid(), uid()) ->
 	  {ok, done} | 
-	  {ok, already_blocked} | 
+	  {ok, already_set} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -168,8 +168,9 @@ block(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: unblock/2 =======================================
 %%% It unblocks a user whose identification is: UID.
--spec unblock(non_neg_integer(), non_neg_integer()) ->
+-spec unblock(cid(), uid()) ->
 	  {ok, done} | 
+	  {ok, already_set} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -697,7 +698,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
 		{ reply
-		, {ok, already_blocked}
+		, {ok, already_set}
 		, cht(State)
 		, Timeout
 		};
