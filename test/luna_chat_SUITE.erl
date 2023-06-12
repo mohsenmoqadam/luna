@@ -14,7 +14,7 @@ init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(luna),
     [{k, v}| Config].
 
-end_per_suite(Config) ->
+end_per_suite(_Config) ->
     ok.
 
 init_per_testcase(_TestCase, Config) ->
@@ -32,6 +32,9 @@ all() ->
     , del_simplex
     , block_simplex
     , unblock_simplex
+    , mute_simplex
+    , unmute_simplex
+    , set_kivi
     ].
 
 add_simplex(_Config) ->
@@ -252,7 +255,7 @@ del_simplex(_Config) ->
     , new
     , #{ cid := CID
        , cra := CRA
-       } = CM1
+       }
     } = luna_chat:add(StarterId1, FollowerId1),
     
     { ok
@@ -298,7 +301,7 @@ block_simplex(_Config) ->
     , new
     , #{ cid := CID
        , cra := CRA
-       } = CM1
+       }
     } = luna_chat:add(StarterId1, FollowerId1),
     
     { ok
@@ -338,7 +341,7 @@ unblock_simplex(_) ->
     , new
     , #{ cid := CID
        , cra := CRA
-       } = CM1
+       }
     } = luna_chat:add(StarterId1, FollowerId1),
     
     {ok, already_set} = luna_chat:unblock(CID, StarterId1),
@@ -370,9 +373,112 @@ unblock_simplex(_) ->
 
     {error, invalid_uid} = luna_chat:unblock(CID, rand:uniform(1000000)),
     {error, invalid_cid} = luna_chat:unblock(rand:uniform(1000000), StarterId1),
-    {ok, already_set} = luna_chat:unblock(CID, StarterId1),
-    {ok, already_set} = luna_chat:unblock(CID, FollowerId1),
     {error, invalid_params} = luna_chat:unblock(a, b),
     
     ok.
+
+mute_simplex(_) ->
+    %%=== New chat without KiVi
+    StarterId1 = rand:uniform(1000000),
+    FollowerId1 = rand:uniform(1000000),
+
+    { ok
+    , new
+    , #{ cid := CID
+       , cra := CRA
+       }
+    } = luna_chat:add(StarterId1, FollowerId1),
+        
+    { ok
+    , #{ cid := CID
+       , cra := CRA
+       , mda := MDA_S1
+       , last_message_sequence := 2 
+       , starter_is_muted := true
+       }
+    } = luna_chat:mute(CID, StarterId1),
+    ?assert(is_tuple(ec_date:parse(binary_to_list(MDA_S1)))),
+
+    { ok
+    , #{ cid := CID
+       , cra := CRA
+       , mda := MDA_F1
+       , last_message_sequence := 3
+       , follower_is_muted := true
+       }
+    } = luna_chat:mute(CID, FollowerId1),
+    ?assert(is_tuple(ec_date:parse(binary_to_list(MDA_F1)))),
+
+    {error, invalid_uid} = luna_chat:mute(CID, rand:uniform(1000000)),
+    {error, invalid_cid} = luna_chat:mute(rand:uniform(1000000), StarterId1),
+    {ok, already_set} = luna_chat:mute(CID, StarterId1),
+    {ok, already_set} = luna_chat:mute(CID, FollowerId1),
+    {error, invalid_params} = luna_chat:mute(a, b),
     
+    ok.
+
+unmute_simplex(_) ->
+    %%=== New chat without KiVi
+    StarterId1 = rand:uniform(1000000),
+    FollowerId1 = rand:uniform(1000000),
+
+    { ok
+    , new
+    , #{ cid := CID
+       , cra := CRA
+       } 
+    } = luna_chat:add(StarterId1, FollowerId1),
+
+    {ok, already_set} = luna_chat:unmute(CID, StarterId1),
+    {ok, already_set} = luna_chat:unmute(CID, FollowerId1),
+    
+    {ok, #{cid := CID}} = luna_chat:mute(CID, StarterId1),
+    {ok, #{cid := CID}} = luna_chat:mute(CID, FollowerId1),
+
+    { ok
+    , #{ cid := CID
+       , cra := CRA
+       , mda := MDA_S1
+       , last_message_sequence := 4 
+       , starter_is_muted := false
+       }
+    } = luna_chat:unmute(CID, StarterId1),
+    ?assert(is_tuple(ec_date:parse(binary_to_list(MDA_S1)))),
+
+    { ok
+    , #{ cid := CID
+       , cra := CRA
+       , mda := MDA_F1
+       , last_message_sequence := 5
+       , follower_is_muted := false
+       }
+    } = luna_chat:unmute(CID, FollowerId1),
+    ?assert(is_tuple(ec_date:parse(binary_to_list(MDA_F1)))),
+
+    {error, invalid_uid} = luna_chat:unmute(CID, rand:uniform(1000000)),
+    {error, invalid_cid} = luna_chat:unmute(rand:uniform(1000000), StarterId1),
+    {error, invalid_params} = luna_chat:unmute(a, b),
+    
+    ok.
+
+set_kivi(_) ->   
+    %%=== New chat without KiVi
+    StarterId1 = rand:uniform(1000000),
+    FollowerId1 = rand:uniform(1000000),
+    KiVi = #{<<"K1">> => <<"V1">>},
+
+    { ok
+    , new
+    , #{ cid := CID
+       , cra := CRA
+       } 
+    } = luna_chat:add(StarterId1, FollowerId1),
+
+    {ok, done} = luna_chat:set_kivi(CID, KiVi),
+    {ok, #{kivi := #{<<"K1">> := <<"V1">>}}} = luna_chat:get(CID, StarterId1),
+    {ok, #{kivi := #{<<"K1">> := <<"V1">>}}} = luna_chat:get(CID, FollowerId1),
+
+    {error, invalid_cid} = luna_chat:set_kivi(rand:uniform(1000000), #{}),
+    {error, invalid_params} = luna_chat:set_kivi(a, b),
+
+    ok.

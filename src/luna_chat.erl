@@ -181,8 +181,9 @@ unblock(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: mute/2 ==========================================
 %%% It mutes a user whose identification is: UID.
--spec mute(non_neg_integer(), non_neg_integer()) ->
-	  {ok, done} | 
+-spec mute(cid(), uid()) ->
+	  {ok, done} |
+	  {ok, already_set} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -207,7 +208,7 @@ unmute(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: set_kivi/2 ======================================
 %%% It sets the chat's KiVi (Key-value storage).
--spec set_kivi(non_neg_integer(), map()) ->
+-spec set_kivi(cid(), map()) ->
 	  {ok, done} |  
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -794,7 +795,7 @@ handle_call( {set_muted_state, UID, MutedState}
 		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
 		{ reply
-		, {ok, done}
+		, {ok, already_set}
 		, cht(State)
 		, Timeout
 		};
@@ -804,7 +805,7 @@ handle_call( {set_muted_state, UID, MutedState}
 					 , starter_is_muted = MutedState
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, m(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -814,7 +815,7 @@ handle_call( {set_muted_state, UID, MutedState}
 					 , follower_is_muted = MutedState
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, m(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -842,7 +843,9 @@ handle_call( {set_kivi, KiVi}
 		, Timeout
 		};
 	    {ok, MDA} ->
-		NLCM = LCM#luna_chat_meta{mda = MDA},
+		NLCM = LCM#luna_chat_meta{ mda = MDA
+					 , kivi = KiVi
+					 },
 		{ reply
 		, {ok, done}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
