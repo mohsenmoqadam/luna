@@ -475,7 +475,7 @@ sp_chat_message_add( CID, StarterId, FollowerId, Writer, MessageSequence
 		 , ReplySequence, Body, object(Objects), AutoDelete, json(KiVi) ],
 	case luna_db_pool:do(Query, Params) of
 	    {ok, _, [[1]]} -> {error, ?DBE_EXCEPTION};
-	    {ok, _, [[2, CRA, LMeS]]} -> {ok, date(CRA), LMeS}
+	    {ok, _, [[2, MDA, CRA, LMeS]]} -> {ok, date(MDA), date(CRA), LMeS}
 	end
     catch
 	_:Eny -> {error, Eny}

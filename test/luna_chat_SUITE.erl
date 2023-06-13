@@ -1,3 +1,4 @@
+
 -module(luna_chat_SUITE).
 
 -compile(export_all).
@@ -470,12 +471,7 @@ set_kivi(_) ->
     FollowerId1 = ?ID,
     KiVi = #{<<"K1">> => <<"V1">>},
 
-    { ok
-    , new
-    , #{ cid := CID
-       , cra := CRA
-       } 
-    } = luna_chat:add(StarterId1, FollowerId1),
+    {ok, new, #{cid := CID}} = luna_chat:add(StarterId1, FollowerId1),
 
     {ok, done} = luna_chat:set_kivi(CID, KiVi),
     {ok, #{kivi := #{<<"K1">> := <<"V1">>}}} = luna_chat:get(CID, StarterId1),
@@ -493,12 +489,7 @@ set_auto_del(_) ->
     StarterAutoDel = 1000,
     FollowerAutoDel = 1001,
 
-    { ok
-    , new
-    , #{ cid := CID
-       , cra := CRA
-       } 
-    } = luna_chat:add(StarterId1, FollowerId1),
+    {ok, new, #{cid := CID}} = luna_chat:add(StarterId1, FollowerId1),
 
     {ok, #{starter_auto_delete := null}} = luna_chat:get(CID, StarterId1),
     {ok, #{follower_auto_delete := null}} = luna_chat:get(CID, FollowerId1),

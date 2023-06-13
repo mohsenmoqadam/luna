@@ -95,6 +95,7 @@
 -type cid() :: non_neg_integer().
 -type seq() :: non_neg_integer().
 -type uid() :: starter_id() | follower_id().
+-type ver() :: non_neg_integer().
 
 -ifdef(TEST).
 -define(LOG_ERROR(Format, Args), ct:print(default, 50, Format, Args)).

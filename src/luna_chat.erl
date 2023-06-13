@@ -66,6 +66,11 @@
 	 ]
        ).
 
+-import( luna_utils
+       , [ json/1
+	 ]
+       ).
+
 -include("luna.hrl").
 
 %%%=== API Function: add/2,3 =========================================
@@ -195,7 +200,7 @@ mute(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: unmute/2 ========================================
 %%% It unmutes a user whose identification is: UID.
--spec unmute(non_neg_integer(), non_neg_integer()) ->
+-spec unmute(cid(), uid()) ->
 	  {ok, done} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -220,10 +225,7 @@ set_kivi(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: set_auto_del/3 ==================================
 %%% It sets an auto-delete for a user whose identification is: UID.
--spec set_auto_del( non_neg_integer()
-		  , non_neg_integer()
-		  , non_neg_integer()
-		  ) ->
+-spec set_auto_del(cid(), uid(), non_neg_integer()) ->
 	  {ok, done} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -238,14 +240,12 @@ set_auto_del(_, _, _) -> {error, invalid_params}.
 
 %%%=== API Function: set_delivered/3 =================================
 %%% It sets the last delivered message sequence.
--spec set_delivered( non_neg_integer()
-		   , non_neg_integer()
-		   , non_neg_integer()
-		   ) ->
-	  {ok, done} | 
+-spec set_delivered(cid(), uid(), seq()) ->
+	  {ok, luna_date(), uid()} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_seq} |
+	  {error, already_set} |
 	  {error, invalid_params} |
 	  {error, server_internal_error}. 
 set_delivered(CID, UID, Sequence) 
@@ -257,14 +257,12 @@ set_delivered(_, _, _) -> {error, invalid_params}.
 
 %%%=== API Function: set_seen/3 ======================================
 %%% It sets the last seen message sequence.
--spec set_seen( non_neg_integer()
-	      , non_neg_integer()
-	      , non_neg_integer()
-	      ) ->
-	  {ok, done} | 
+-spec set_seen(cid(), uid(), seq()) ->
+	  {ok, luna_date(), uid()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} | 
+	  {error, already_set} |
 	  {error, invalid_params} |
 	  {error, server_internal_error}. 
 set_seen(CID, UID, Sequence) 
@@ -280,9 +278,8 @@ add_message(CID, WID, ReplySequence, Body) ->
     add_message(CID, WID, ReplySequence, Body, null, null).
 add_message(CID, WID, ReplySequence, Body, Objects) ->
     add_message(CID, WID, ReplySequence, Body, Objects, null).
--spec add_message( non_neg_integer(), non_neg_integer()
-		 , non_neg_integer(), binary(), map(), map() ) ->
-	  {ok, done} | 
+-spec add_message(cid(), uid(), seq(), binary(), map(), map()) ->
+	  {ok, luna_date(), luna_date(), seq()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -290,7 +287,9 @@ add_message(CID, WID, ReplySequence, Body, Objects) ->
 	  {error, invalid_objects} | 
 	  {error, invalid_params} |
 	  {error, server_internal_error}. 
-add_message(_, _, _, <<"">>, _, _) -> {error, invalid_body};
+add_message(_, _, _, <<"">>, #{<<"items">> := []}, _) -> {error, invalid_body};
+add_message(_, _, _, <<"">>, #{items := []}, _) -> {error, invalid_body};
+add_message(_, _, _, <<"">>, null, _) -> {error, invalid_body};
 add_message(CID, WID, ReplySequence, Body, Objects, KiVi) 
   when Objects =:= #{} orelse 
        Objects =:= null ->
@@ -329,10 +328,9 @@ set_message(CID, WID, Sequence, Version, Body) ->
     set_message(CID, WID, Sequence, Version, Body, null, null).
 set_message(CID, WID, Sequence, Version, Body, Objects) ->
     set_message(CID, WID, Sequence, Version, Body, Objects, null).
--spec set_message( non_neg_integer(), non_neg_integer()
-		 , non_neg_integer(), non_neg_integer()
+-spec set_message( cid(), uid(), seq(), ver()
 		 , binary(), map(), map() ) ->
-	  {ok, done} | 
+	  {ok, luna_date(), seq(), ver(), uid()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -342,17 +340,18 @@ set_message(CID, WID, Sequence, Version, Body, Objects) ->
 	  {error, invalid_objects} | 
 	  {error, invalid_params} |
 	  {error, server_internal_error}. 
-set_message(_, _, _, _, <<"">>, _, _) -> {error, invalid_body};
+set_message(_, _, _, _, <<"">>, #{}, _) -> {error, invalid_body};
+set_message(_, _, _, _, <<"">>, null, _) -> {error, invalid_body};
 set_message(CID, WID, Sequence, Version, Body, Objects, KiVi) 
   when Objects =:= #{} orelse 
        Objects =:= null ->
     set_message_(CID, WID, Sequence, Version, Body, null, KiVi);
-set_message( CID, WID, Sequence, Body
-	   , Version, #{<<"items">> := ObjectList}, KiVi ) ->
-    set_message( CID, WID, Sequence, Body
-	       , Version, #{items => ObjectList}, KiVi );
-set_message( CID, WID, Sequence, Body
-	   , Version, #{items := ObjectList} = Objects, KiVi ) ->
+set_message( CID, WID, Sequence, Version
+	   , Body, #{<<"items">> := ObjectList}, KiVi ) ->
+    set_message( CID, WID, Sequence, Version
+	       , Body, #{items => ObjectList}, KiVi );
+set_message( CID, WID, Sequence, Version
+	   , Body, #{items := ObjectList} = Objects, KiVi ) ->
     case is_valid_opjects(ObjectList) of
 	true -> set_message_( CID, WID, Sequence, Version
 			    , Body, Objects, KiVi );
@@ -372,13 +371,13 @@ set_message_(CID, WID, Sequence, Version, Body, Objects, KiVi)
     call( CID
         , {set_message, WID, Sequence, Version, Body, Objects, KiVi}
         );
-set_message_(_, _, _, _, _, _, _) ->  {error, invalid_params}.
+set_message_(_, _, _, _, _, _, _) -> 
+    {error, invalid_params}.
 
 %%%=== API Function: del_message/4 ===================================
 %%% It deletes one message from the chat.
--spec del_message( non_neg_integer(), non_neg_integer()
-		 , non_neg_integer(), one | everyone ) ->
-	  {ok, done} | 
+-spec del_message(cid(), uid(), seq(), one | everyone ) ->
+	  {ok, luna_date(), seq(), uid()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -398,9 +397,8 @@ del_message(_, _, _, _) ->  {error, invalid_params}.
 
 %%%=== API Function: set_message_action/4 ============================
 %%% It changes the action of one message.
--spec set_message_action( non_neg_integer(), non_neg_integer()
-			, non_neg_integer(), one | everyone ) ->
-	  {ok, done} | 
+-spec set_message_action(cid(), uid(), seq(), map()) ->
+	  {ok, luna_date(), seq(), uid()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -420,8 +418,8 @@ set_message_action(_, _, _, _) ->  {error, invalid_params}.
 
 %%%=== API Function: add_pin_message/3 ===============================
 %%% It adds a list of message sequences to the chat pin list.
--spec add_pin_message(non_neg_integer(), non_neg_integer(), map()) ->
-	  {ok, done} | 
+-spec add_pin_message(cid(), uid(), map()) ->
+	  {ok, luna_date(), uid()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_pin} | 
@@ -441,7 +439,7 @@ add_pin_message(_, _, _) -> {error, invalid_params}.
 %%%=== API Function: del_pin_message/2 ===============================
 %%% It deletes the chat pin list
 -spec del_pin_message(non_neg_integer(), non_neg_integer()) ->
-	  {ok, done} | 
+	  {ok, luna_date(), uid()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -454,9 +452,8 @@ del_pin_message(_, _) -> {error, invalid_params}.
 
 %%%=== API Function: get_messages/4 ==================================
 %%% It returns messages of the chat.
--spec get_messages( non_neg_integer(), non_neg_integer()
-		  , non_neg_integer(), one | everyone ) ->
-	  {ok, done} | 
+-spec get_messages(cid(), uid(), seq(), non_neg_integer()) ->
+	  {ok, list()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -473,10 +470,9 @@ get_messages(_, _, _, _) ->  {error, invalid_params}.
 
 %%%=== API Function: get_medias/4 ====================================
 %%% It returns medias of the chat.
--spec get_medias( non_neg_integer(), non_neg_integer()
-		, non_neg_integer(), non_neg_integer()
-		, 'FILE' | 'LINK' ) ->
-	  {ok, done} | 
+-spec get_medias( cid(), uid(), 'FILE' | 'LINK',  seq()
+		, non_neg_integer() ) ->
+	  {ok, list()} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -968,7 +964,8 @@ handle_call( {set_delivered, UID, NS}
                       {starter, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ starter_id = UID
                                   , starter_start_sequence = SStS
-				  }, UID } when NS < SStS ->
+				  , last_message_sequence = LMeS
+				  }, UID } when NS < SStS orelse NS > LMeS ->
                       {starter, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ starter_id = UID 
 				  , starter_delivered_sequence = SDeS 
@@ -988,7 +985,8 @@ handle_call( {set_delivered, UID, NS}
                       {follower, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ follower_id = UID
                                   , follower_start_sequence = FStS
-				  }, UID } when NS < FStS ->
+				  , last_message_sequence = LMeS
+				  }, UID } when NS < FStS orelse NS > LMeS ->
                       {follower, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ follower_id = UID 
 				  , follower_delivered_sequence = FDeS
@@ -1031,7 +1029,7 @@ handle_call( {set_delivered, UID, NS}
 		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
 		{ reply
-		, {ok, done}
+		, {error, already_set}
 		, State
 		, Timeout
 		};
@@ -1040,7 +1038,7 @@ handle_call( {set_delivered, UID, NS}
 					 , starter_delivered_sequence = NS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1049,7 +1047,7 @@ handle_call( {set_delivered, UID, NS}
 					 , follower_delivered_sequence = NS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1075,8 +1073,9 @@ handle_call( {set_seen, UID, NS}
                                   }, UID } ->
                       {starter, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ starter_id = UID
+				  , last_message_sequence = LMeS
                                   , starter_start_sequence = SStS
-				  }, UID } when NS < SStS ->
+				  }, UID } when NS < SStS orelse NS > LMeS ->
                       {starter, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ starter_id = UID 
 				  , starter_delivered_sequence = SDeS 
@@ -1097,8 +1096,9 @@ handle_call( {set_seen, UID, NS}
                                   }, UID } ->
                       {follower, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ follower_id = UID
+				  , last_message_sequence = LMeS
                                   , follower_start_sequence = FStS
-				  }, UID } when NS < FStS ->
+				  }, UID } when NS < FStS orelse NS > LMeS ->
                       {follower, {error, ?DBE_INVALID_SEQ}};
 		  {#luna_chat_meta{ follower_id = UID
                                   , follower_delivered_sequence = FDeS
@@ -1143,7 +1143,7 @@ handle_call( {set_seen, UID, NS}
 		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
 		{ reply
-		, {ok, done}
+		, {error, already_set}
 		, cht(State)
 		, Timeout
 		};
@@ -1152,7 +1152,7 @@ handle_call( {set_seen, UID, NS}
 					 , starter_seen_sequence = NS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1161,7 +1161,7 @@ handle_call( {set_seen, UID, NS}
 					 , follower_seen_sequence = NS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1255,21 +1255,21 @@ handle_call( {add_message, WID, ReplySequence, Body, Objects, KiVi}
 		, cht(State)
 		, Timeout
 		};
-	    {starter, {ok, MDA, NLMeS}} ->
+	    {starter, {ok, MDA, CRA, NLMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, CRA, NLMeS, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
-	    {follower, {ok, MDA, NLMeS}} ->
+	    {follower, {ok, MDA, CRA, NLMeS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_message_sequence = NLMeS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, CRA, NLMeS, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1297,13 +1297,12 @@ handle_call( { set_message, WID, Sequence, Version
                       {starter, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ cid = CID
 				  , last_event_sequence = LEvS
+				  , last_message_sequence = LMeS
 				  , starter_id = WID
 				  , starter_auto_delete = SAuD
 				  , starter_start_sequence = SStS
-				  , starter_delivered_sequence = SDeS
 				  , follower_id = FID
-				  }, WID} when Sequence >= SStS 
-					       , Sequence =< SDeS ->
+				  }, WID} when Sequence >= SStS andalso Sequence =< LMeS ->
 		      { starter
 		      , sp_chat_message_set( CID, WID, FID, WID
 					   , Sequence, LEvS, Version
@@ -1319,13 +1318,12 @@ handle_call( { set_message, WID, Sequence, Version
                       {follower, {error, ?DBE_INVALID_CID}};
 		  {#luna_chat_meta{ cid = CID
 				  , last_event_sequence = LEvS
+				  , last_message_sequence = LMeS
 				  , follower_id = WID
 				  , follower_auto_delete = FAuD
 				  , follower_start_sequence = FStS
-				  , follower_delivered_sequence = FDeS
 				  , starter_id = SID
-				  }, WID} when Sequence >= FStS
-					       , Sequence =< FDeS ->
+				  }, WID} when Sequence >= FStS andalso Sequence =< LMeS ->
 		      { follower
 		      , sp_chat_message_set( CID, SID, WID, WID
 					   , Sequence, LEvS, Version
@@ -1361,27 +1359,33 @@ handle_call( { set_message, WID, Sequence, Version
 		, cht(State)
 		, Timeout
 		};
+	    {_, {error, ?DBE_INVALID_VER}} ->
+		{ reply
+		, {error, invalid_version}
+		, cht(State)
+		, Timeout
+		};
 	    {_, {error, ?DBE_INVALID_UID}} ->
 		{ reply
 		, {error, invalid_uid}
 		, cht(State)
 		, Timeout
 		};
-	    {starter, {ok, MDA, NLEvS, _LMeV}} ->
+	    {starter, {ok, MDA, NLEvS, LMeV}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLEvS, LMeV, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
-	    {follower, {ok, MDA, NLEvS, _LMeV}} ->
+	    {follower, {ok, MDA, NLEvS, LMeV}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLEvS, LMeV, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1480,7 +1484,7 @@ handle_call( {del_message, WID, Sequence, DelType}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1489,7 +1493,7 @@ handle_call( {del_message, WID, Sequence, DelType}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1589,7 +1593,7 @@ handle_call( {set_message_action, WID, Sequence, Action}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1598,7 +1602,7 @@ handle_call( {set_message_action, WID, Sequence, Action}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1713,21 +1717,23 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
 		};		
 	    {starter, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
+					 , pinned_messages = json(json(PinnedMessages))
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
 	    {follower, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
+					 , pinned_messages = json(json(PinnedMessages))
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1803,21 +1809,23 @@ handle_call( {del_pin_message, UID}
 		};
 	    {starter, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
+					 , pinned_messages = null
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
 	    {follower, {ok, MDA, NLMeS, NLEvS}} ->
 		NLCM = LCM#luna_chat_meta{ mda = MDA
+					 , pinned_messages = null
 					 , last_message_sequence = NLMeS
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, done}
+		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -2055,29 +2063,29 @@ is_valid_opjects( [ #{ type := Type
 		     , body := Body
 		     , mime := Mime
 		     , oid := OID
-		     } | R ] ) when Type =:= <<"FILE">>
-				    , is_binary(Body)
-				    , is_binary(Mime)
-				    , is_binary(OID) ->
+		     } | R ] ) when (Type =:= <<"FILE">> orelse Type =:= 'FILE') andalso
+				    is_binary(Body) andalso
+				    is_binary(Mime) andalso
+				    is_binary(OID) ->
     is_valid_opjects(R);
 is_valid_opjects( [ #{ <<"type">> := Type 
 		     , <<"body">> := Body
 		     , <<"mime">> := Mime
 		     , <<"oid">> := OID
-		     } | R ] ) when Type =:= <<"FILE">>
-				    , is_binary(Body)
-				    , is_binary(Mime)
-				    , is_binary(OID) ->
+		     } | R ] ) when (Type =:= <<"FILE">> orelse Type =:= 'FILE') andalso
+				    is_binary(Body) andalso
+				    is_binary(Mime) andalso
+				    is_binary(OID) ->
     is_valid_opjects(R);
 is_valid_opjects( [ #{ type := Type 
 		     , body := Body
-		     } | R ] ) when Type =:= <<"LINK">>
-				    , is_binary(Body) ->
+		     } | R ] ) when (Type =:= <<"LINK">> orelse Type =:= 'LINK') andalso
+				    is_binary(Body) ->
     is_valid_opjects(R);
 is_valid_opjects( [ #{ <<"type">> := Type 
 		     , <<"body">> := Body
-		     } | R ] ) when Type =:= <<"LINK">>
-				    , is_binary(Body) ->
+		     } | R ] ) when (Type =:= <<"LINK">> orelse Type =:= 'LINK') andalso
+				    is_binary(Body) ->
     is_valid_opjects(R);
 is_valid_opjects(_) -> false.
 
@@ -2156,4 +2164,12 @@ m(#luna_chat_object{type = 'LINK'} = LCO, _) ->
 m([], _M, []) -> [];
 m([], _M, Acc) -> Acc;
 m([E|R], M, Acc) ->
-    m(R, M, Acc ++ [m(E, M)]).
+    case {E, M} of
+	{#luna_chat_message{is_deleted_by_starter = true}, 'STARTER'} ->
+	    m(R, M, Acc);
+	{#luna_chat_message{is_deleted_by_follower = true}, 'FOLLOWER'} ->
+	    m(R, M, Acc);
+	_ ->
+	    m(R, M, Acc ++ [m(E, M)])
+    end.
+	
