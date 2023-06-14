@@ -7,7 +7,7 @@
 -include("luna.hrl").
 
 get_rand_int() ->
-    crypto:rand_uniform(999999, 999999999).
+    ran_int(999999, 999999999).
 
 get_rand_string(Len) ->
     DefaultAllowedChars =
@@ -17,7 +17,13 @@ get_rand_string(Len) ->
     
 get_rand_str(CharSize, AllowedChars) ->
     [begin
-         Picked = crypto:rand_uniform(1, length(AllowedChars)),
+         Picked = ran_int(1, length(AllowedChars)),
          lists:nth(Picked, AllowedChars)
      end || _ <- lists:seq(1, CharSize)].
 
+ran_int(From, To) when From < To ->
+    rand:uniform(To - From + 1) - 1 + From;
+ran_int(_, _) ->
+    invalid_params.
+
+    

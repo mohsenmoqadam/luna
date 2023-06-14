@@ -134,7 +134,7 @@ add(_, _, _) -> {error, invalid_params}.
 %%%=== API Function: del/2 ===========================================
 %%% It deletes a chat for a user whose identification is: UID.
 -spec del(cid(), uid()) ->
-	  {ok, luna_date()} | 
+	  {ok, luna_date(), seq(), uid()} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -160,7 +160,7 @@ get(_, _) -> {error, invalid_params}.
 %%%=== API Function: block/2 =========================================
 %%% It blocks a user whose identification is: UID.
 -spec block(cid(), uid()) ->
-	  {ok, done} | 
+	  {ok, luna_date(), seq(), uid()} | 
 	  {ok, already_set} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -174,7 +174,7 @@ block(_, _) -> {error, invalid_params}.
 %%%=== API Function: unblock/2 =======================================
 %%% It unblocks a user whose identification is: UID.
 -spec unblock(cid(), uid()) ->
-	  {ok, done} | 
+	  {ok, luna_date(), seq(), uid()} | 
 	  {ok, already_set} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -187,7 +187,7 @@ unblock(_, _) -> {error, invalid_params}.
 %%%=== API Function: mute/2 ==========================================
 %%% It mutes a user whose identification is: UID.
 -spec mute(cid(), uid()) ->
-	  {ok, done} |
+	  {ok, luna_date(), seq(), uid()} |
 	  {ok, already_set} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -201,7 +201,7 @@ mute(_, _) -> {error, invalid_params}.
 %%%=== API Function: unmute/2 ========================================
 %%% It unmutes a user whose identification is: UID.
 -spec unmute(cid(), uid()) ->
-	  {ok, done} | 
+	  {ok, luna_date(), seq(), uid()} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -569,7 +569,7 @@ handle_call( {del, UID}
 					 , starter_seen_sequence = SSeS
 					 },
 		{ reply
-		, {ok, m(NLCM, 'STARTER')}
+		, {ok, MDA, LMeS, LCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -582,7 +582,7 @@ handle_call( {del, UID}
 					 , follower_seen_sequence = SSeS
 					 },
 		{ reply
-		, {ok, m(NLCM, 'FOLLOWER')}
+		, {ok, MDA, LMeS, LCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -705,7 +705,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 					 , starter_is_blocked = BlockedState
 					 },
 		{ reply
-		, {ok, m(NLCM, 'STARTER')}
+		, {ok, MDA, LMeS, LCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -715,7 +715,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 					 , follower_is_blocked = BlockedState
 					 },
 		{ reply
-		, {ok, m(NLCM, 'FOLLOWER')}
+		, {ok, MDA, LMeS, LCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -801,7 +801,7 @@ handle_call( {set_muted_state, UID, MutedState}
 					 , starter_is_muted = MutedState
 					 },
 		{ reply
-		, {ok, m(NLCM, 'STARTER')}
+		, {ok, MDA, LMeS, LCM#luna_chat_meta.follower_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -811,7 +811,7 @@ handle_call( {set_muted_state, UID, MutedState}
 					 , follower_is_muted = MutedState
 					 },
 		{ reply
-		, {ok, m(NLCM, 'FOLLOWER')}
+		, {ok, MDA, LMeS, LCM#luna_chat_meta.starter_id}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -843,7 +843,11 @@ handle_call( {set_kivi, KiVi}
 					 , kivi = KiVi
 					 },
 		{ reply
-		, {ok, done}
+		, { ok
+		  , MDA
+		  , LCM#luna_chat_meta.starter_id
+		  , LCM#luna_chat_meta.follower_id
+		  }
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -928,7 +932,11 @@ handle_call( {set_auto_del, UID, AutoDel}
 					 , starter_auto_delete = AutoDel
 					 },
 		{ reply
-		, {ok, done}
+		, { ok
+		  , MDA
+		  , LCM#luna_chat_meta.starter_id
+		  , LCM#luna_chat_meta.follower_id
+		  } 
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -937,7 +945,11 @@ handle_call( {set_auto_del, UID, AutoDel}
 					 , follower_auto_delete = AutoDel
 					 },
 		{ reply
-		, {ok, done}
+		, { ok
+		  , MDA
+		  , LCM#luna_chat_meta.starter_id
+		  , LCM#luna_chat_meta.follower_id
+		  }
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
