@@ -386,7 +386,7 @@ set_message(_) ->
 	 , kivi := #{<<"K2">> := <<"V2">>}
 	 , sequence := 2
 	 , writer := 'STARTER'
-	 , version := 1
+	 , version := 2
 	 , objects := #{ items := [ #{ <<"body">> := <<"--BODY-2--">>
 				     , <<"mime">> := <<"--MIME-2--">>
 				     , <<"oid">> := <<"--OID-2--">>
@@ -405,7 +405,7 @@ set_message(_) ->
 	 , kivi := #{<<"K2">> := <<"V2">>}
 	 , sequence := 3
 	 , writer := 'FOLLOWER'
-	 , version := 1
+	 , version := 2
 	 , objects := null
 	 }
       ]

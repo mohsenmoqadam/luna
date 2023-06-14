@@ -50,8 +50,8 @@ BEGIN
 	  , last_message_sequence = v_last_message_sequence 
 	WHERE cid = in_cid;
 	-- Save message
-	INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, mda, type, sequence, reply_sequence, writer, body, objects, auto_delete, kivi)
-	VALUES (in_cid, v_cra, v_mda, 'MESSAGE', v_last_message_sequence, in_reply_sequence, in_writer, in_body, in_objects, in_auto_delete, in_kivi);
+	INSERT INTO `luna_dev_db`.`chat_message` (cid, cra, mda, type, sequence, reply_sequence, writer, body, objects, auto_delete, kivi, version)
+	VALUES (in_cid, v_cra, v_mda, 'MESSAGE', v_last_message_sequence, in_reply_sequence, in_writer, in_body, in_objects, in_auto_delete, in_kivi, 0);
 	-- Upddate chat_storage
 	IF (!ISNULL(in_objects)) THEN
 		SELECT `luna_dev_db`.`sf_storage_add`(in_cid, in_starter_id, in_follower_id, v_last_message_sequence, v_cra, in_objects) INTO v_objects_cnt;
@@ -59,7 +59,7 @@ BEGIN
 	-- TRANSACTION: END
 	COMMIT;
 	
-	SELECT 2 AS 'RC', v_cra AS 'CRA', v_last_message_sequence AS 'LAST_MESSAGE_SEQUENCE'; 
+	SELECT 2 AS 'RC', v_mda AS 'CHAT_MDA', v_cra AS 'MESSAGE_CRA', v_last_message_sequence AS 'LAST_MESSAGE_SEQUENCE'; 
 END
 %
 DELIMITER ;

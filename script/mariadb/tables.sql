@@ -51,7 +51,7 @@ CREATE TABLE `luna_dev_db`.`chat_message`(
 	, `kivi` JSON DEFAULT NULL 
 	, `version` INT DEFAULT 0
 	, PRIMARY KEY (`cid`, `sequence`, type)
-	, KEY(`cid`, `sequence`, )
+	, KEY(`cid`, `sequence`)
 ) 
 DEFAULT CHARSET=utf8mb4 
 COLLATE utf8mb4_unicode_ci

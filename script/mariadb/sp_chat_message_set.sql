@@ -83,7 +83,7 @@ BEGIN
 			END IF;
 			-- TRANSACTION: END
 			COMMIT;
-			SELECT 4 AS 'RC', v_mda AS 'MDA', v_version AS 'LAST_VERSION', v_last_event_sequence AS 'LAST_EVENT_SEQUENCE';
+			SELECT 4 AS 'RC', v_mda AS 'MDA', v_last_event_sequence AS 'LAST_EVENT_SEQUENCE', v_version AS 'LAST_VERSION';
 		ELSE
 			SELECT 3 AS 'RC';
 		END IF;

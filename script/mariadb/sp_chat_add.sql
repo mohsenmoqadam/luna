@@ -15,17 +15,17 @@ BEGIN
 	-- 6: ALREADY EXIST BUT FOLLOWER HAD BEEN DELETED
 	-- 7: NEW CHAT
 	 
-	DECLARE v_rc INT;
-	DECLARE v_cra DATETIME(6);
+	DECLARE v_rc INT DEFAULT NULL;
+	DECLARE v_cra DATETIME(6) DEFAULT NULL;
 	DECLARE v_cid BIGINT DEFAULT NULL;
-	DECLARE v_starter_id BIGINT;
-	DECLARE v_follower_id BIGINT;
+	DECLARE v_starter_id BIGINT DEFAULT NULL;
+	DECLARE v_follower_id BIGINT DEFAULT NULL;
 	DECLARE v_already_exist BOOLEAN DEFAULT TRUE;
-	DECLARE v_starter_is_deleted BOOLEAN;
-	DECLARE v_follower_is_deleted BOOLEAN;
-	DECLARE v_last_message_sequence BIGINT;
-	DECLARE v_last_event_sequence BIGINT;
-	DECLARE v_action_creator VARCHAR(16);
+	DECLARE v_starter_is_deleted BOOLEAN DEFAULT NULL;
+	DECLARE v_follower_is_deleted BOOLEAN DEFAULT NULL;
+	DECLARE v_last_message_sequence BIGINT DEFAULT NULL;
+	DECLARE v_last_event_sequence BIGINT DEFAULT NULL;
+	DECLARE v_action_creator VARCHAR(16) DEFAULT NULL;
 
 	-- DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	-- BEGIN
@@ -161,4 +161,4 @@ END
 DELIMITER ;
 
 -- EXAMPLE:
--- CALL `luna_dev_db`.`sp_chat_add`(1, 5, "{}");
+-- CALL `luna_dev_db`.`sp_chat_add`(1, 5, null);
