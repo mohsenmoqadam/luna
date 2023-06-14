@@ -134,7 +134,8 @@ add(_, _, _) -> {error, invalid_params}.
 %%%=== API Function: del/2 ===========================================
 %%% It deletes a chat for a user whose identification is: UID.
 -spec del(cid(), uid()) ->
-	  {ok, luna_date(), seq(), uid()} | 
+	  {ok, luna_date(), seq(), {uid(), is_muted()}} | 
+	  {ok, luna_date(), seq(), peer_not_exist} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -160,7 +161,8 @@ get(_, _) -> {error, invalid_params}.
 %%%=== API Function: block/2 =========================================
 %%% It blocks a user whose identification is: UID.
 -spec block(cid(), uid()) ->
-	  {ok, luna_date(), seq(), uid()} | 
+	  {ok, luna_date(), seq(), {uid(), is_muted()}} |
+	  {ok, luna_date(), seq(), peer_not_exist} | 
 	  {ok, already_set} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -174,7 +176,8 @@ block(_, _) -> {error, invalid_params}.
 %%%=== API Function: unblock/2 =======================================
 %%% It unblocks a user whose identification is: UID.
 -spec unblock(cid(), uid()) ->
-	  {ok, luna_date(), seq(), uid()} | 
+	  {ok, luna_date(), seq(), {uid(), is_muted()}} |
+	  {ok, luna_date(), seq(), peer_not_exist} |
 	  {ok, already_set} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -187,7 +190,8 @@ unblock(_, _) -> {error, invalid_params}.
 %%%=== API Function: mute/2 ==========================================
 %%% It mutes a user whose identification is: UID.
 -spec mute(cid(), uid()) ->
-	  {ok, luna_date(), seq(), uid()} |
+	  {ok, luna_date(), seq(), {uid(), is_muted()}} |
+	  {ok, luna_date(), seq(), peer_not_exist} |
 	  {ok, already_set} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
@@ -201,7 +205,8 @@ mute(_, _) -> {error, invalid_params}.
 %%%=== API Function: unmute/2 ========================================
 %%% It unmutes a user whose identification is: UID.
 -spec unmute(cid(), uid()) ->
-	  {ok, luna_date(), seq(), uid()} | 
+	  {ok, luna_date(), seq(), {uid(), is_muted()}} | 
+	  {ok, luna_date(), seq(), peer_not_exist} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -214,7 +219,11 @@ unmute(_, _) -> {error, invalid_params}.
 %%%=== API Function: set_kivi/2 ======================================
 %%% It sets the chat's KiVi (Key-value storage).
 -spec set_kivi(cid(), map()) ->
-	  {ok, done} |  
+	  { ok
+	  , luna_date()
+	  , {uid(), is_muted()} | peer_not_exist
+	  , {uid(), is_muted()} | peer_not_exist
+	  } |
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
 	  {error, server_internal_error}. 
@@ -226,7 +235,9 @@ set_kivi(_, _) -> {error, invalid_params}.
 %%%=== API Function: set_auto_del/3 ==================================
 %%% It sets an auto-delete for a user whose identification is: UID.
 -spec set_auto_del(cid(), uid(), non_neg_integer()) ->
-	  {ok, done} | 
+	  {ok, luna_date(), {uid(), is_muted()}} |
+	  {ok, luna_date(), peer_not_exist} |
+	  {ok, already_set} |
 	  {error, invalid_uid} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -241,7 +252,8 @@ set_auto_del(_, _, _) -> {error, invalid_params}.
 %%%=== API Function: set_delivered/3 =================================
 %%% It sets the last delivered message sequence.
 -spec set_delivered(cid(), uid(), seq()) ->
-	  {ok, luna_date(), uid()} | 
+	  {ok, luna_date(), {uid(), is_muted()}} |
+	  {ok, luna_date(), peer_not_exist} | 
 	  {error, invalid_cid} | 
 	  {error, invalid_uid} | 
 	  {error, invalid_seq} |
@@ -258,7 +270,8 @@ set_delivered(_, _, _) -> {error, invalid_params}.
 %%%=== API Function: set_seen/3 ======================================
 %%% It sets the last seen message sequence.
 -spec set_seen(cid(), uid(), seq()) ->
-	  {ok, luna_date(), uid()} | 
+	  {ok, luna_date(), {uid(), is_muted()}} |
+	  {ok, luna_date(), peer_not_exist} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} | 
@@ -279,7 +292,8 @@ add_message(CID, WID, ReplySequence, Body) ->
 add_message(CID, WID, ReplySequence, Body, Objects) ->
     add_message(CID, WID, ReplySequence, Body, Objects, null).
 -spec add_message(cid(), uid(), seq(), binary(), map(), map()) ->
-	  {ok, luna_date(), luna_date(), seq()} | 
+	  {ok, luna_date(), luna_date(), seq(), {uid(), is_muted()}} |
+	  {ok, luna_date(), luna_date(), seq(), peer_not_exist} | 
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -330,7 +344,8 @@ set_message(CID, WID, Sequence, Version, Body, Objects) ->
     set_message(CID, WID, Sequence, Version, Body, Objects, null).
 -spec set_message( cid(), uid(), seq(), ver()
 		 , binary(), map(), map() ) ->
-	  {ok, luna_date(), seq(), ver(), uid()} | 
+	  {ok, luna_date(), seq(), ver(), {uid(), is_muted()}} | 
+	  {ok, luna_date(), seq(), ver(), peer_not_exist} |
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -377,7 +392,8 @@ set_message_(_, _, _, _, _, _, _) ->
 %%%=== API Function: del_message/4 ===================================
 %%% It deletes one message from the chat.
 -spec del_message(cid(), uid(), seq(), one | everyone ) ->
-	  {ok, luna_date(), seq(), uid()} | 
+	  {ok, luna_date(), seq(), {uid(), is_muted()}} |
+	  {ok, luna_date(), seq(), peer_not_exist} |
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -398,7 +414,8 @@ del_message(_, _, _, _) ->  {error, invalid_params}.
 %%%=== API Function: set_message_action/4 ============================
 %%% It changes the action of one message.
 -spec set_message_action(cid(), uid(), seq(), map()) ->
-	  {ok, luna_date(), seq(), uid()} | 
+	  {ok, luna_date(), seq(), {uid(), is_muted()}} |
+	  {ok, luna_date(), seq(), peer_not_exist} |
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_seq} |
@@ -419,7 +436,8 @@ set_message_action(_, _, _, _) ->  {error, invalid_params}.
 %%%=== API Function: add_pin_message/3 ===============================
 %%% It adds a list of message sequences to the chat pin list.
 -spec add_pin_message(cid(), uid(), map()) ->
-	  {ok, luna_date(), uid()} | 
+	  {ok, luna_date(), {uid(), is_muted()}} |
+	  {ok, luna_date(), peer_not_exist} |
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_pin} | 
@@ -439,7 +457,8 @@ add_pin_message(_, _, _) -> {error, invalid_params}.
 %%%=== API Function: del_pin_message/2 ===============================
 %%% It deletes the chat pin list
 -spec del_pin_message(non_neg_integer(), non_neg_integer()) ->
-	  {ok, luna_date(), uid()} | 
+	  {ok, luna_date(), {uid(), is_muted()}} |
+	  {ok, luna_date(), peer_not_exist} |
 	  {error, invalid_uid} |
 	  {error, invalid_cid} | 
 	  {error, invalid_params} |
@@ -568,8 +587,9 @@ handle_call( {del, UID}
 					 , starter_delivered_sequence = SDeS
 					 , starter_seen_sequence = SSeS
 					 },
+		
 		{ reply
-		, {ok, MDA, LMeS, LCM#luna_chat_meta.follower_id}
+		, {ok, MDA, LMeS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -582,7 +602,7 @@ handle_call( {del, UID}
 					 , follower_seen_sequence = SSeS
 					 },
 		{ reply
-		, {ok, MDA, LMeS, LCM#luna_chat_meta.starter_id}
+		, {ok, MDA, LMeS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -594,7 +614,7 @@ handle_call( {del, UID}
 	       , Timeout
 	       }
     end;
-
+    
 %%%===================================================================
 handle_call({get, UID}, _From, #luna_chat_state{ chat_meta = LCM
 					       , timeout = Timeout
@@ -705,7 +725,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 					 , starter_is_blocked = BlockedState
 					 },
 		{ reply
-		, {ok, MDA, LMeS, LCM#luna_chat_meta.follower_id}
+		, {ok, MDA, LMeS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -715,7 +735,7 @@ handle_call( {set_blocked_state, UID, BlockedState}
 					 , follower_is_blocked = BlockedState
 					 },
 		{ reply
-		, {ok, MDA, LMeS, LCM#luna_chat_meta.starter_id}
+		, {ok, MDA, LMeS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -801,7 +821,7 @@ handle_call( {set_muted_state, UID, MutedState}
 					 , starter_is_muted = MutedState
 					 },
 		{ reply
-		, {ok, MDA, LMeS, LCM#luna_chat_meta.follower_id}
+		, {ok, MDA, LMeS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -811,7 +831,7 @@ handle_call( {set_muted_state, UID, MutedState}
 					 , follower_is_muted = MutedState
 					 },
 		{ reply
-		, {ok, MDA, LMeS, LCM#luna_chat_meta.starter_id}
+		, {ok, MDA, LMeS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -845,8 +865,8 @@ handle_call( {set_kivi, KiVi}
 		{ reply
 		, { ok
 		  , MDA
-		  , LCM#luna_chat_meta.starter_id
-		  , LCM#luna_chat_meta.follower_id
+		  , s(NLCM, 'STARTER')
+		  , s(NLCM, 'FOLLOWER')
 		  }
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
@@ -923,7 +943,7 @@ handle_call( {set_auto_del, UID, AutoDel}
 		};
 	    {_, {error, ?DBE_ALREADY_SET}} ->		
 		{ reply
-		, {ok, done}
+		, {ok, already_set}
 		, cht(State)
 		, Timeout
 		};
@@ -934,8 +954,7 @@ handle_call( {set_auto_del, UID, AutoDel}
 		{ reply
 		, { ok
 		  , MDA
-		  , LCM#luna_chat_meta.starter_id
-		  , LCM#luna_chat_meta.follower_id
+		  , s(NLCM, 'FOLLOWER')
 		  } 
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
@@ -947,8 +966,7 @@ handle_call( {set_auto_del, UID, AutoDel}
 		{ reply
 		, { ok
 		  , MDA
-		  , LCM#luna_chat_meta.starter_id
-		  , LCM#luna_chat_meta.follower_id
+		  , s(NLCM, 'STARTER')
 		  }
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
@@ -1050,7 +1068,7 @@ handle_call( {set_delivered, UID, NS}
 					 , starter_delivered_sequence = NS
 					 },
 		{ reply
-		, {ok, MDA, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1059,7 +1077,7 @@ handle_call( {set_delivered, UID, NS}
 					 , follower_delivered_sequence = NS
 					 },
 		{ reply
-		, {ok, MDA, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1164,7 +1182,7 @@ handle_call( {set_seen, UID, NS}
 					 , starter_seen_sequence = NS
 					 },
 		{ reply
-		, {ok, MDA, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1173,7 +1191,7 @@ handle_call( {set_seen, UID, NS}
 					 , follower_seen_sequence = NS
 					 },
 		{ reply
-		, {ok, MDA, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1272,7 +1290,7 @@ handle_call( {add_message, WID, ReplySequence, Body, Objects, KiVi}
 					 , last_message_sequence = NLMeS
 					 },
 		{ reply
-		, {ok, MDA, CRA, NLMeS, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, CRA, NLMeS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1281,7 +1299,7 @@ handle_call( {add_message, WID, ReplySequence, Body, Objects, KiVi}
 					 , last_message_sequence = NLMeS
 					 },
 		{ reply
-		, {ok, MDA, CRA, NLMeS, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, CRA, NLMeS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1388,7 +1406,7 @@ handle_call( { set_message, WID, Sequence, Version
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLEvS, LMeV, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, NLEvS, LMeV, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1397,7 +1415,7 @@ handle_call( { set_message, WID, Sequence, Version
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLEvS, LMeV, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, NLEvS, LMeV, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1496,7 +1514,7 @@ handle_call( {del_message, WID, Sequence, DelType}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, NLEvS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1505,7 +1523,7 @@ handle_call( {del_message, WID, Sequence, DelType}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, NLEvS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1605,7 +1623,7 @@ handle_call( {set_message_action, WID, Sequence, Action}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, NLEvS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1614,7 +1632,7 @@ handle_call( {set_message_action, WID, Sequence, Action}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLEvS, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, NLEvS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1734,7 +1752,7 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, NLMeS, NLEvS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1745,7 +1763,7 @@ handle_call( {add_pin_message, UID, #{items := PinnedMessageList0}}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, NLMeS, NLEvS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -1826,7 +1844,7 @@ handle_call( {del_pin_message, UID}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.follower_id}
+		, {ok, MDA, NLMeS, NLEvS, s(NLCM, 'FOLLOWER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		};
@@ -1837,7 +1855,7 @@ handle_call( {del_pin_message, UID}
 					 , last_event_sequence = NLEvS
 					 },
 		{ reply
-		, {ok, MDA, NLMeS, NLEvS, NLCM#luna_chat_meta.starter_id}
+		, {ok, MDA, NLMeS, NLEvS, s(NLCM, 'STARTER')}
 		, cht(State#luna_chat_state{chat_meta = NLCM})
 		, Timeout
 		}
@@ -2055,12 +2073,6 @@ call(CID, Request) ->
 	_:_ -> {error, server_internal_error}
     end.
 
-cht(#luna_chat_state{hibernate_timer = HTiR} = State) 
-  when is_reference(HTiR) ->
-    erlang:cancel_timer(HTiR), 
-    State#luna_chat_state{hibernate_timer = undefined};
-cht(State) -> State.
-
 is_valid_pins(LMeS, StS, DeS, #{items := PinnedMessages}) ->
     is_valid_pins_(LMeS, StS, DeS, PinnedMessages);
 is_valid_pins(_, _, _, _) -> false.
@@ -2101,6 +2113,7 @@ is_valid_opjects( [ #{ <<"type">> := Type
     is_valid_opjects(R);
 is_valid_opjects(_) -> false.
 
+%% reform to `m`ap
 m(L, M) when is_list(L) ->
     m(L, M, []);
 m(#luna_chat_message{} = LCM, 'FOLLOWER') ->
@@ -2184,4 +2197,28 @@ m([E|R], M, Acc) ->
 	_ ->
 	    m(R, M, Acc ++ [m(E, M)])
     end.
-	
+
+%%  `c`ange `h`ibernate `t`imer
+cht(#luna_chat_state{hibernate_timer = HTiR} = State) 
+  when is_reference(HTiR) ->
+    erlang:cancel_timer(HTiR), 
+    State#luna_chat_state{hibernate_timer = undefined};
+cht(State) -> State.
+
+%% pear `s`ignal
+s( #luna_chat_meta{ starter_is_deleted = false
+		  , starter_is_muted = IsMuted
+		  , starter_id = UID
+		  }
+ , 'STARTER'
+ ) -> 
+    {UID, IsMuted};
+s(#luna_chat_meta{ follower_is_deleted = false
+		 , follower_is_muted = IsMuted
+		 , follower_id = UID
+		 }
+ , 'FOLLOWER'
+ ) -> 
+    {UID, IsMuted};
+s(_, _) ->
+    peer_not_exist.

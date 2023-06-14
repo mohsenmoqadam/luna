@@ -55,19 +55,19 @@ add_message(_) ->
     {ok, new, #{cid := CID}} = luna_chat:add(StarterID, FollowerID),
 
     %% Add (normal)
-    {ok, MAD1, CRA1, 2, FollowerID} = luna_chat:add_message(CID, StarterID, null, ?STR(16)),
+    {ok, MAD1, CRA1, 2, {FollowerID, false}} = luna_chat:add_message(CID, StarterID, null, ?STR(16)),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MAD1)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(CRA1)))),
-    {ok, MAD2, CRA2, 3, FollowerID} = luna_chat:add_message(CID, StarterID, null, <<"">>, #{items => [File]}),
+    {ok, MAD2, CRA2, 3, {FollowerID, false}} = luna_chat:add_message(CID, StarterID, null, <<"">>, #{items => [File]}),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MAD2)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(CRA2)))),
-    {ok, MAD3, CRA3, 4, StarterID} = luna_chat:add_message(CID, FollowerID, null, ?STR(16), #{items => [File, Link]}),
+    {ok, MAD3, CRA3, 4, {StarterID, false}} = luna_chat:add_message(CID, FollowerID, null, ?STR(16), #{items => [File, Link]}),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MAD3)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(CRA3)))),      
-    {ok, MAD4, CRA4, 5, FollowerID} = luna_chat:add_message(CID, StarterID, null, ?STR(16), null, #{a => b}),
+    {ok, MAD4, CRA4, 5, {FollowerID, false}} = luna_chat:add_message(CID, StarterID, null, ?STR(16), null, #{a => b}),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MAD4)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(CRA4)))),
-    {ok, MAD5, CRA5, 6, StarterID} = luna_chat:add_message(CID, FollowerID, null, ?STR(16), #{items => [File, Link]}, #{a => b}),
+    {ok, MAD5, CRA5, 6, {StarterID, false}} = luna_chat:add_message(CID, FollowerID, null, ?STR(16), #{items => [File, Link]}, #{a => b}),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MAD5)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(CRA5)))),
 
@@ -255,8 +255,8 @@ set_delivered(_) ->
     {ok, _, _, StarterSeq, _} = luna_chat:add_message(CID, FollowerID, null, ?STR(16)),
 
     %% Set delivered (normal)
-    {ok, StarterMDA, FollowerID} = luna_chat:set_delivered(CID, StarterID, FollowerSeq),
-    {ok, FollowerMDA, StarterID} = luna_chat:set_delivered(CID, FollowerID, StarterSeq),
+    {ok, StarterMDA, {FollowerID, false}} = luna_chat:set_delivered(CID, StarterID, FollowerSeq),
+    {ok, FollowerMDA, {StarterID, false}} = luna_chat:set_delivered(CID, FollowerID, StarterSeq),
     ?assert(is_tuple(ec_date:parse(binary_to_list(StarterMDA)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(FollowerMDA)))),
 
@@ -293,8 +293,8 @@ set_seen(_) ->
     %% Set seen (normal)
     {ok, _, _} = luna_chat:set_delivered(CID, StarterID, FollowerSeq1),
     {ok, _, _} = luna_chat:set_delivered(CID, FollowerID, StarterSeq1),
-    {ok, StarterMDA, FollowerID} = luna_chat:set_seen(CID, StarterID, FollowerSeq1),
-    {ok, FollowerMDA, StarterID} = luna_chat:set_seen(CID, FollowerID, StarterSeq1),
+    {ok, StarterMDA, {FollowerID, false}} = luna_chat:set_seen(CID, StarterID, FollowerSeq1),
+    {ok, FollowerMDA, {StarterID, false}} = luna_chat:set_seen(CID, FollowerID, StarterSeq1),
     ?assert(is_tuple(ec_date:parse(binary_to_list(StarterMDA)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(FollowerMDA)))),
 
@@ -353,31 +353,31 @@ set_message(_) ->
 					    ),
 
     %% Set (normal)
-    {ok, MDA1, 1, 1, FollowerID} = luna_chat:set_message( CID
-							, StarterID
-							, 2
-							, 0
-							, <<"--CAPTION-2--">>
-							, #{ items => [ #{ type => 'FILE'
-									 , body => <<"--BODY-2--">>
-									 , mime => <<"--MIME-2--">>
-									 , oid => <<"--OID-2--">>
-									 }
-								      , #{ type => 'LINK'
-									 , body => <<"--BODY-2--">>
-									 }
-								      ]
-							   }
-							, #{<<"K2">> => <<"V2">>} 
-							),
-    {ok, MDA2, 2, 1, StarterID} = luna_chat:set_message( CID
-						       , FollowerID
-						       , 3
-						       , 0
-						       , <<"--CAPTION-2--">>
-						       , null
-						       , #{<<"K2">> => <<"V2">>} 
-						       ),
+    {ok, MDA1, 1, 1, {FollowerID, false}} = luna_chat:set_message( CID
+								 , StarterID
+								 , 2
+								 , 0
+								 , <<"--CAPTION-2--">>
+								 , #{ items => [ #{ type => 'FILE'
+										  , body => <<"--BODY-2--">>
+										  , mime => <<"--MIME-2--">>
+										  , oid => <<"--OID-2--">>
+										  }
+									       , #{ type => 'LINK'
+										  , body => <<"--BODY-2--">>
+										  }
+									       ]
+								    }
+								 , #{<<"K2">> => <<"V2">>} 
+								 ),
+    {ok, MDA2, 2, 1, {StarterID, false}} = luna_chat:set_message( CID
+								, FollowerID
+								, 3
+								, 0
+								, <<"--CAPTION-2--">>
+								, null
+								, #{<<"K2">> => <<"V2">>} 
+								),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
 
@@ -482,8 +482,8 @@ del_message(_) ->
     {ok, _, _} = luna_chat:set_delivered(CID, FollowerID, 3),
 
     %% Del (normal)
-    {ok, MDA1, 1, FollowerID} = luna_chat:del_message(CID, StarterID, 2, one),
-    {ok, MDA2, 2, StarterID} = luna_chat:del_message(CID, FollowerID, 3, everyone),
+    {ok, MDA1, 1, {FollowerID, false}} = luna_chat:del_message(CID, StarterID, 2, one),
+    {ok, MDA2, 2, {StarterID, false}} = luna_chat:del_message(CID, FollowerID, 3, everyone),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
 
@@ -527,15 +527,15 @@ set_message_action(_) ->
     {ok, _, _} = luna_chat:set_delivered(CID, FollowerID, 4),
 
     %% Set Action (normal)
-    {ok, StarterMDA, 1, FollowerID} = luna_chat:set_message_action(CID, StarterID, 5, #{a => b}),
-    {ok, FollowerMDA, 2, StarterID} = luna_chat:set_message_action(CID, FollowerID, 4, #{a => b}),
+    {ok, StarterMDA, 1, {FollowerID, false}} = luna_chat:set_message_action(CID, StarterID, 5, #{a => b}),
+    {ok, FollowerMDA, 2, {StarterID, false}} = luna_chat:set_message_action(CID, FollowerID, 4, #{a => b}),
     ?assert(is_tuple(ec_date:parse(binary_to_list(StarterMDA)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(FollowerMDA)))),
     {ok, [#{actions := #{<<"a">> := <<"b">>}}]} = luna_chat:get_messages(CID, StarterID, 4, 1),
     {ok, [#{actions := #{<<"a">> := <<"b">>}}]} = luna_chat:get_messages(CID, StarterID, 5, 1),
     {ok, [#{actions := #{<<"a">> := <<"b">>}}]} = luna_chat:get_messages(CID, FollowerID, 4, 1),
     {ok, [#{actions := #{<<"a">> := <<"b">>}}]} = luna_chat:get_messages(CID, FollowerID, 5, 1),
-    
+
     %% Set Action (error)
     {error, invalid_uid} = luna_chat:set_message_action(CID, ?ID, 5, #{a => b}),
     {error, invalid_cid} = luna_chat:set_message_action(?ID, StarterID, 5, #{a => b}),
@@ -547,7 +547,7 @@ set_message_action(_) ->
     {error, invalid_params} = luna_chat:set_message_action(CID, StarterID, a, #{a => b}),
     {error, invalid_params} = luna_chat:set_message_action(CID, a, 5, #{a => b}),
     {error, invalid_params} = luna_chat:set_message_action(a, StarterID, 5, #{a => b}),
-    
+
     ok.
 
 pin_message(_) ->
@@ -566,16 +566,16 @@ pin_message(_) ->
     {ok, _, _} = luna_chat:set_delivered(CID, FollowerID, 4),
 
     %% Add pin message (normal)
-    {ok, MDA1, 8, 1, FollowerID} = luna_chat:add_pin_message(CID, StarterID, #{items => [S3, S5]}),
+    {ok, MDA1, 8, 1, {FollowerID, false}} = luna_chat:add_pin_message(CID, StarterID, #{items => [S3, S5]}),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     {ok, #{pinned_messages := #{<<"items">> := [S3, S5]}}} = luna_chat:get(CID, FollowerID),
     {ok, #{pinned_messages := #{<<"items">> := [S3, S5]}}} = luna_chat:get(CID, StarterID),
-    
+
     %% Del pin message (normal) 
-    {ok, MDA2, 9, 2, StarterID} = luna_chat:del_pin_message(CID, FollowerID),
+    {ok, MDA2, 9, 2, {StarterID, false}} = luna_chat:del_pin_message(CID, FollowerID),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
-    {ok, MDA3, 10, 3, StarterID} = luna_chat:add_pin_message(CID, FollowerID, #{items => [2, 3]}),
-    {ok, MDA4, 11, 4, FollowerID} = luna_chat:del_pin_message(CID, StarterID),
+    {ok, MDA3, 10, 3, {StarterID, false}} = luna_chat:add_pin_message(CID, FollowerID, #{items => [2, 3]}),
+    {ok, MDA4, 11, 4, {FollowerID, false}} = luna_chat:del_pin_message(CID, StarterID),
     {ok, #{pinned_messages := null}} = luna_chat:get(CID, FollowerID),
     {ok, #{pinned_messages := null}} = luna_chat:get(CID, StarterID),
 

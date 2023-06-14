@@ -1,4 +1,3 @@
-
 -module(luna_chat_SUITE).
 
 -compile(export_all).
@@ -132,7 +131,7 @@ add(_Config) ->
        , kivi := null
        }
     } = luna_chat:add(StarterId1, FollowerId1), 
-    
+
     %% Already exist chat (FollowerId1, StarterId1) and without KiVi 
     { ok
     , already_exist
@@ -215,14 +214,14 @@ add(_Config) ->
        }
     } = luna_chat:add(FollowerId1, StarterId1, #{k => v}),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA_F1_S1)))),
-   
+
     %% Same ID error without KiVi
     SameId = ?ID,
     {error, same_starter_and_follower} = luna_chat:add(SameId, SameId),
-    
+
     %% Same ID error with KiVi
     {error, same_starter_and_follower} = luna_chat:add(SameId, SameId, #{<<"k">> => <<"v">>}),
-    
+
     %% Invalid Params
     {error, invalid_params} = luna_chat:add(a, b),
     {error, invalid_params} = luna_chat:add(a, b, []),
@@ -230,7 +229,7 @@ add(_Config) ->
     {error, invalid_params} = luna_chat:add(SameId, a, []),
     {error, invalid_params} = luna_chat:add(b, SameId),
     {error, invalid_params} = luna_chat:add(b, SameId, []),
-    
+
     ok.
 
 get(_Config) ->
@@ -238,7 +237,7 @@ get(_Config) ->
     StarterId = ?ID,
     FollowerId = ?ID,
     {ok, new, #{cid := CID} = ChatMeta} = luna_chat:add(StarterId, FollowerId),
-    
+
     %% Get (normal)
     {ok, ChatMeta} = luna_chat:get(CID, StarterId),
     {ok, ChatMeta} = luna_chat:get(CID, FollowerId),
@@ -303,7 +302,7 @@ del(_Config) ->
     {ok, new, #{cid := CID}} = luna_chat:add(StarterId, FollowerId),
 
     %% Del (normal)
-    {ok, MDA1, LMeS1, FollowerId} = luna_chat:del(CID, StarterId),
+    {ok, MDA1, LMeS1, {FollowerId, false}} = luna_chat:del(CID, StarterId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     ?assert(LMeS1 =:= 2),
     {error, invalid_cid} = luna_chat:get(CID, StarterId),
@@ -321,7 +320,7 @@ del(_Config) ->
 	  }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
-    {ok, MDA3, LMeS2, StarterId} = luna_chat:del(CID, FollowerId),
+    {ok, MDA3, LMeS2, peer_not_exist} = luna_chat:del(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA3)))),
     ?assert(LMeS2 =:= 3),
     {error, invalid_cid} = luna_chat:get(CID, FollowerId),
@@ -332,7 +331,7 @@ del(_Config) ->
     {error, invalid_cid} = luna_chat:del(CID, StarterId),
     {error, invalid_cid} = luna_chat:del(CID, FollowerId),
     {error, invalid_params} = luna_chat:del(a, b),
-    
+
     ok.
 
 block(_Config) ->
@@ -340,9 +339,9 @@ block(_Config) ->
     StarterId = ?ID,
     FollowerId = ?ID,
     {ok, new, #{cid := CID}} = luna_chat:add(StarterId, FollowerId),
-    
+
     %% Block (normal)
-    {ok, MDA1, LMeS1, FollowerId} = luna_chat:block(CID, StarterId),
+    {ok, MDA1, LMeS1, {FollowerId, false}} = luna_chat:block(CID, StarterId),
     ?assert(LMeS1 =:= 2),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     {ok, #{ mda := MDA1
@@ -353,8 +352,9 @@ block(_Config) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
-    {ok, MDA2, LMeS2, StarterId} = luna_chat:block(CID, FollowerId),
-    ?assert(LMeS2 =:= 3),
+    {ok, _, _, _} = luna_chat:del(CID, StarterId),
+    {ok, MDA2, LMeS2, peer_not_exist} = luna_chat:block(CID, FollowerId),
+    ?assert(LMeS2 =:= 4),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
     {ok, #{ mda := MDA2
           , last_event_sequence := 0
@@ -364,14 +364,13 @@ block(_Config) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
-    
+
     %% Block (error)
     {error, invalid_uid} = luna_chat:block(CID, ?ID),
     {error, invalid_cid} = luna_chat:block(?ID, StarterId),
-    {ok, already_set} = luna_chat:block(CID, StarterId),
     {ok, already_set} = luna_chat:block(CID, FollowerId),
     {error, invalid_params} = luna_chat:block(a, b),
-    
+
     ok.
 
 unblock(_Config) ->
@@ -383,7 +382,7 @@ unblock(_Config) ->
     {ok, _, _, _} = luna_chat:block(CID, FollowerId),
 
     %% Unblock (normal)
-    {ok, MDA1, LMeS1, FollowerId} = luna_chat:unblock(CID, StarterId),
+    {ok, MDA1, LMeS1, {FollowerId, false}} = luna_chat:unblock(CID, StarterId),
     ?assert(LMeS1 =:= 4),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     {ok, #{ mda := MDA1
@@ -394,8 +393,9 @@ unblock(_Config) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
-    {ok, MDA2, LMeS2, StarterId} = luna_chat:unblock(CID, FollowerId),
-    ?assert(LMeS2 =:= 5),
+    {ok, _, _, _} = luna_chat:del(CID, StarterId),
+    {ok, MDA2, LMeS2, peer_not_exist} = luna_chat:unblock(CID, FollowerId),
+    ?assert(LMeS2 =:= 6),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
     {ok, #{ mda := MDA2
           , last_event_sequence := 0
@@ -405,14 +405,13 @@ unblock(_Config) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
-    
+
     %% Unlock (error)
     {error, invalid_uid} = luna_chat:unblock(CID, ?ID),
     {error, invalid_cid} = luna_chat:unblock(?ID, StarterId),
-    {ok, already_set} = luna_chat:unblock(CID, StarterId),
     {ok, already_set} = luna_chat:unblock(CID, FollowerId),
     {error, invalid_params} = luna_chat:unblock(a, b),
-    
+
     ok.  
 
 mute(_Config) ->
@@ -420,9 +419,9 @@ mute(_Config) ->
     StarterId = ?ID,
     FollowerId = ?ID,
     {ok, new, #{cid := CID}} = luna_chat:add(StarterId, FollowerId),
-    
+
     %% Mute (normal)
-    {ok, MDA1, LMeS1, FollowerId} = luna_chat:mute(CID, StarterId),
+    {ok, MDA1, LMeS1, {FollowerId, false}} = luna_chat:mute(CID, StarterId),
     ?assert(LMeS1 =:= 2),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     {ok, #{ mda := MDA1
@@ -433,8 +432,9 @@ mute(_Config) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
-    {ok, MDA2, LMeS2, StarterId} = luna_chat:mute(CID, FollowerId),
-    ?assert(LMeS2 =:= 3),
+    {ok, _, _, _} = luna_chat:del(CID, StarterId),
+    {ok, MDA2, LMeS2, peer_not_exist} = luna_chat:mute(CID, FollowerId),
+    ?assert(LMeS2 =:= 4),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
     {ok, #{ mda := MDA2
           , last_event_sequence := 0
@@ -444,14 +444,14 @@ mute(_Config) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
-    
+
     %% Mute (error)
     {error, invalid_uid} = luna_chat:mute(CID, ?ID),
     {error, invalid_cid} = luna_chat:mute(?ID, StarterId),
-    {ok, already_set} = luna_chat:mute(CID, StarterId),
+    {error, invalid_cid} = luna_chat:mute(CID, StarterId),
     {ok, already_set} = luna_chat:mute(CID, FollowerId),
     {error, invalid_params} = luna_chat:mute(a, b),
-    
+
     ok.
 
 unmute(_) ->
@@ -463,7 +463,7 @@ unmute(_) ->
     {ok, _, _, _} = luna_chat:mute(CID, FollowerId),
 
     %% Unmute (normal)
-    {ok, MDA1, LMeS1, FollowerId} = luna_chat:unmute(CID, StarterId),
+    {ok, MDA1, LMeS1, {FollowerId, true}} = luna_chat:unmute(CID, StarterId),
     ?assert(LMeS1 =:= 4),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     {ok, #{ mda := MDA1
@@ -474,8 +474,9 @@ unmute(_) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
-    {ok, MDA2, LMeS2, StarterId} = luna_chat:unmute(CID, FollowerId),
-    ?assert(LMeS2 =:= 5),
+    {ok, _, _, _} = luna_chat:del(CID, StarterId),
+    {ok, MDA2, LMeS2, peer_not_exist} = luna_chat:unmute(CID, FollowerId),
+    ?assert(LMeS2 =:= 6),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
     {ok, #{ mda := MDA2
           , last_event_sequence := 0
@@ -485,14 +486,14 @@ unmute(_) ->
           }
     } = luna_chat:get(CID, FollowerId),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
-    
+
     %% Block (error)
     {error, invalid_uid} = luna_chat:unmute(CID, ?ID),
     {error, invalid_cid} = luna_chat:unmute(?ID, StarterId),
-    {ok, already_set} = luna_chat:unmute(CID, StarterId),
+    {error, invalid_cid} = luna_chat:unmute(CID, StarterId),
     {ok, already_set} = luna_chat:unmute(CID, FollowerId),
     {error, invalid_params} = luna_chat:unmute(a, b),
-    
+
     ok.
 
 set_kivi(_) ->   
@@ -503,10 +504,15 @@ set_kivi(_) ->
     {ok, new, #{cid := CID}} = luna_chat:add(StarterId, FollowerId),
 
     %% Set kivi (normal)
-    {ok, MDA, StarterId, FollowerId} = luna_chat:set_kivi(CID, KiVi),
+    {ok, MDA, {StarterId, false}, {FollowerId, false}} = luna_chat:set_kivi(CID, KiVi),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA)))),
     {ok, #{kivi := #{<<"K1">> := <<"V1">>}}} = luna_chat:get(CID, StarterId),
     {ok, #{kivi := #{<<"K1">> := <<"V1">>}}} = luna_chat:get(CID, FollowerId),
+
+    {ok, _, _, _} = luna_chat:del(CID, StarterId),
+    {ok, _, peer_not_exist, {FollowerId, false}} = luna_chat:set_kivi(CID, KiVi),
+    {ok, _, _, _} = luna_chat:del(CID, FollowerId),
+    {ok, _, peer_not_exist, peer_not_exist} = luna_chat:set_kivi(CID, KiVi),
 
     %% Set kivi (error) 
     {error, invalid_cid} = luna_chat:set_kivi(?ID, #{}),
@@ -526,15 +532,18 @@ set_auto_del(_) ->
     {ok, #{starter_auto_delete := null}} = luna_chat:get(CID, StarterId),
     {ok, #{follower_auto_delete := null}} = luna_chat:get(CID, FollowerId),
 
-    {ok, MDA1, StarterId, FollowerId} = luna_chat:set_auto_del(CID, StarterId, StarterAutoDel),
-    {ok, MDA2, StarterId, FollowerId} = luna_chat:set_auto_del(CID, FollowerId, FollowerAutoDel),
+    {ok, MDA1, {FollowerId, false}} = luna_chat:set_auto_del(CID, StarterId, StarterAutoDel),
+    {ok, MDA2, {StarterId, false}} = luna_chat:set_auto_del(CID, FollowerId, FollowerAutoDel),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA1)))),
     ?assert(is_tuple(ec_date:parse(binary_to_list(MDA2)))),
-    
+
     {ok, #{starter_auto_delete := StarterAutoDel}} = luna_chat:get(CID, StarterId),
     {ok, #{follower_auto_delete := FollowerAutoDel}} = luna_chat:get(CID, FollowerId),
+
+    {ok, _, _, _} = luna_chat:del(CID, FollowerId),
+    {ok, _, peer_not_exist} = luna_chat:set_auto_del(CID, StarterId, StarterAutoDel+1),
     {ok, _, _, _} = luna_chat:del(CID, StarterId),
-    
+
     %% Set auto del (error)
     {error, invalid_cid} = luna_chat:set_auto_del(CID, StarterId, StarterAutoDel),
     {error, invalid_uid} = luna_chat:set_auto_del(CID, ?ID, StarterAutoDel),
