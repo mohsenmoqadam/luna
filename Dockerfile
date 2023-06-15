@@ -9,4 +9,9 @@ WORKDIR /tmp/rebar3
 RUN ./bootstrap
 RUN cp ./rebar3 /bin
 
+WORKDIR /tmp
+RUN git clone https://github.com/mohsenmoqadam/luna.git
+WORKDIR /tmp/luna
+RUN make rel-prod
+
 
