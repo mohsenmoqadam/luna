@@ -1,26 +1,28 @@
 FROM debian:bullseye AS build
 
-RUN apt-get update 
-RUN apt-get install build-essential git erlang -y
+RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
+    && apt-get update \
+    && apt-get install build-essential git erlang -y
 
 WORKDIR /tmp
-RUN git clone https://github.com/erlang/rebar3.git
+RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
+    && git clone https://github.com/erlang/rebar3.git
 WORKDIR /tmp/rebar3
-RUN ./bootstrap
-RUN cp ./rebar3 /bin
+RUN ./bootstrap \
+    && cp ./rebar3 /bin
 
 WORKDIR /tmp
-RUN git clone https://github.com/mohsenmoqadam/luna.git
+RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
+    && git clone https://github.com/mohsenmoqadam/luna.git
 WORKDIR /tmp/luna
 RUN make rel-prod
 
 FROM debian:bullseye AS prod
 WORKDIR /srv
-COPY --from=build /tmp/luna/_build/prod/rel/luna/luna-1.0.0.tar.gz .
-COPY --from=build /tmp/luna/supervisord.conf . 
+
+COPY --from=build /tmp/luna/_build/prod/rel/luna/luna-1.0.0.tar.gz . 
 RUN tar -zxvf luna-1.0.0.tar.gz
 
-WORKDIR /tmp
 RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
     && apt-get update \
     && apt-get install -y curl \
@@ -28,12 +30,16 @@ RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
     && chmod 777 ./mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version=10.10.5 \
     && apt-get install -y --no-install-recommends mariadb-server mariadb-backup \
-    && apt-get install -y supervisor
-    && mv /srv/supervisord.conf /etc/supervisor/supervisord.conf
+    && apt-get install -y supervisor 
 
+RUN mkdir /srv/mariadb
+COPY supervisord.conf /etc/supervisor/supervisord.conf    
+COPY script/mariadb/*.sql /srv/mariadb/
+COPY script/mariadb/*.sh /srv/mariadb/
+COPY script/mariadb/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
 ARG MARIADB_MYSQL_SOCKET_DIRECTORY='/var/run/mysqld'
 RUN mkdir -p $MARIADB_MYSQL_SOCKET_DIRECTORY \
     && chown root:mysql $MARIADB_MYSQL_SOCKET_DIRECTORY \
     && chmod 774 $MARIADB_MYSQL_SOCKET_DIRECTORY
     
-CMD ["/usr/bin/supervisord"]
+#CMD ["/usr/bin/supervisord"]

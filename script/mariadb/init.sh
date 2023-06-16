@@ -1,7 +1,13 @@
 #!/bin/bash
 
+if [ "$1" = "container" ]
+then
+    sleep 5
+    cd /srv/mariadb
+fi
+
 DB_IP="127.0.0.1"
-DB_PORT=3305
+DB_PORT=3306
 DB_USER="luna_dev_user"
 DB_PASS="luna_dev_pass"
 
@@ -50,51 +56,55 @@ init="init.sql"
 #        ;;
 #esac
 
-#=== Init DB
-printf "Running $RED$init$NOCOLOR ... \t" | expand -t 70
-mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $init
-if [ $? -eq 0 ] 
-then
-    printf "[$GREEN Done $NOCOLOR]\n"
+RESULT=`mysql --skip-column-names -e "SHOW DATABASES LIKE 'luna_dev_db'"`
+if [ "$RESULT" == "luna_dev_db" ]; then
+    echo "Database exist."
 else
-    printf "[$RED Error $NOCOLOR]\n"
-fi
-
-#=== Create tables
-printf "Running $RED$table$NOCOLOR ... \t" | expand -t 70
-mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $table
-if [ $? -eq 0 ] 
-then
-    printf "[$GREEN Done $NOCOLOR]\n"
-else
-    printf "[$RED Error $NOCOLOR]\n"
-fi
-
-#=== Insert defaults
-printf "Running $RED$default$NOCOLOR ... \t" | expand -t 70
-mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $default
-if [ $? -eq 0 ] 
-then
-    printf "[$GREEN Done $NOCOLOR]\n"
-else
-    printf "[$RED Error $NOCOLOR]\n"
-fi
-
-for f in $FILES
-do
-    name=${f##*/}
-    if [ "$name" != "$table" ] && [ "$name" != "$default" ] && [ "$name" != "$init" ]
+    #=== Init DB
+    printf "Running $RED$init$NOCOLOR ... \t" | expand -t 70
+    mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $init
+    if [ $? -eq 0 ] 
     then
-        printf "Running $ORANGE$name$NOCOLOR ... \t" | expand -t 35
-        mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $f
-	retVal=$?
-	if [ $? -eq 0 ] 
-	then
-	    printf "[$GREEN Done $NOCOLOR]\n"
-	else
-	    printf "[$RED Error $NOCOLOR]\n"
-	fi
+	printf "[$GREEN Done $NOCOLOR]\n"
+    else
+	printf "[$RED Error $NOCOLOR]\n"
     fi
-done
 
-echo ""
+    #=== Create tables
+    printf "Running $RED$table$NOCOLOR ... \t" | expand -t 70
+    mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $table
+    if [ $? -eq 0 ] 
+    then
+	printf "[$GREEN Done $NOCOLOR]\n"
+    else
+	printf "[$RED Error $NOCOLOR]\n"
+    fi
+
+    #=== Insert defaults
+    printf "Running $RED$default$NOCOLOR ... \t" | expand -t 70
+    mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $default
+    if [ $? -eq 0 ] 
+    then
+	printf "[$GREEN Done $NOCOLOR]\n"
+    else
+	printf "[$RED Error $NOCOLOR]\n"
+    fi
+
+    for f in $FILES
+    do
+	name=${f##*/}
+	if [ "$name" != "$table" ] && [ "$name" != "$default" ] && [ "$name" != "$init" ]
+	then
+            printf "Running $ORANGE$name$NOCOLOR ... \t" | expand -t 35
+            mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $f
+	    retVal=$?
+	    if [ $? -eq 0 ] 
+	    then
+		printf "[$GREEN Done $NOCOLOR]\n"
+	    else
+		printf "[$RED Error $NOCOLOR]\n"
+	    fi
+	fi
+    done
+    echo "Database created."
+fi    
