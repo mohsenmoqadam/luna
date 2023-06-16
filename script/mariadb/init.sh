@@ -1,8 +1,15 @@
 #!/bin/bash
 
+RESULT=" "
+
 if [ "$1" = "container" ]
 then
-    sleep 5
+    while [ "$RESULT" != "RUNNING" ];
+    do
+	echo "Waiting for the MariaDB to start..."
+	sleep 1
+	RESULT=`supervisorctl status mariadb | tr -s ' ' | cut -d ' ' -f 2`
+    done
     cd /srv/mariadb
 fi
 
@@ -34,31 +41,9 @@ table="tables.sql"
 default="defaults.sql"
 init="init.sql"
 
-#read -p "Are you want to create tables again [ Y:Yes ]? " is_create_again
-#case $is_create_again in
-#    Y)
-#        printf "Running $RED$table$NOCOLOR ... \t" | expand -t 70
-#        mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $table
-#        printf "[$GREEN Done $NOCOLOR]\n"
-#        ;;
-#    *)
-#        ;;
-#esac
-
-#read -p "Are you want to insert defaults [ Y:Yes ]? " is_insert_defaults
-#case $is_insert_defaults in
-#    Y)
-#        printf "Running $RED$default$NOCOLOR ... \t" | expand -t 70
-#        mysql -h $DB_IP -P $DB_PORT -u $DB_USER --password=$DB_PASS < $default
-#        printf "[$GREEN Done $NOCOLOR]\n"
-#        ;;
-#    *)
-#        ;;
-#esac
-
 RESULT=`mysql --skip-column-names -e "SHOW DATABASES LIKE 'luna_dev_db'"`
 if [ "$RESULT" == "luna_dev_db" ]; then
-    echo "Database exist."
+    echo "Database Already Created!"
 else
     #=== Init DB
     printf "Running $RED$init$NOCOLOR ... \t" | expand -t 70
@@ -106,5 +91,5 @@ else
 	    fi
 	fi
     done
-    echo "Database created."
+    echo "Database Created."
 fi    
