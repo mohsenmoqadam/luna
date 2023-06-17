@@ -9,6 +9,7 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
+    ok = application:ensure_started(bingo),
     luna_rgst:init(),
     luna_db_sup:start_link(),
     luna_sup:start_link().

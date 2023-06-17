@@ -37,9 +37,11 @@ COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY script/mariadb/*.sql /srv/mariadb/
 COPY script/mariadb/*.sh /srv/mariadb/
 COPY script/mariadb/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+COPY script/erlang/start_luna.sh /srv/bin/start_luna.sh
 ARG MARIADB_MYSQL_SOCKET_DIRECTORY='/var/run/mysqld'
 RUN mkdir -p $MARIADB_MYSQL_SOCKET_DIRECTORY \
     && chown root:mysql $MARIADB_MYSQL_SOCKET_DIRECTORY \
     && chmod 774 $MARIADB_MYSQL_SOCKET_DIRECTORY
-    
+RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
+    && apt-get install nano -y    
 #CMD ["/usr/bin/supervisord"]
