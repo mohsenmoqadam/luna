@@ -11,8 +11,6 @@ WORKDIR /tmp/rebar3
 RUN ./bootstrap \
     && cp ./rebar3 /bin
 
-ARG V=3
-
 WORKDIR /tmp
 RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
     && git clone https://github.com/mohsenmoqadam/luna.git
@@ -29,8 +27,7 @@ RUN echo "nameserver 178.22.122.100\nnameserver 185.51.200.2" > /etc/resolv.conf
     && chmod 777 ./mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version=10.10.5 \
     && apt-get install -y --no-install-recommends mariadb-server mariadb-backup \
-    && apt-get install -y supervisor \
-    && apt-get install -y nano
+    && apt-get install -y supervisor 
 
 RUN mkdir /srv/script
     
@@ -52,4 +49,4 @@ RUN tar -zxvf luna-1.0.0.tar.gz \
     && mkdir -p /srv/log/luna \
     && chmod 777 /srv/log/luna  
 
-#CMD ["/usr/bin/supervisord"]
+CMD ["/usr/bin/supervisord"]
