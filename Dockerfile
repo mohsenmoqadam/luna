@@ -11,6 +11,8 @@ WORKDIR /tmp/rebar3
 RUN ./bootstrap \
     && cp ./rebar3 /bin
 
+ARG V=1
+
 WORKDIR /tmp
 RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
     && git clone https://github.com/mohsenmoqadam/luna.git
@@ -20,7 +22,9 @@ RUN make rel-prod
 FROM debian:bullseye AS prod
 WORKDIR /srv
 
-COPY --from=build /tmp/luna/_build/prod/rel/luna/luna-1.0.0.tar.gz . 
+COPY --from=build /tmp/luna/_build/prod/rel/luna/luna-1.0.0.tar.gz .
+COPY --from=build /tmp/luna/Version .
+
 RUN tar -zxvf luna-1.0.0.tar.gz
 
 RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
@@ -37,11 +41,19 @@ COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY script/mariadb/*.sql /srv/mariadb/
 COPY script/mariadb/*.sh /srv/mariadb/
 COPY script/mariadb/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
-COPY script/erlang/start_luna.sh /srv/bin/start_luna.sh
-ARG MARIADB_MYSQL_SOCKET_DIRECTORY='/var/run/mysqld'
-RUN mkdir -p $MARIADB_MYSQL_SOCKET_DIRECTORY \
-    && chown root:mysql $MARIADB_MYSQL_SOCKET_DIRECTORY \
-    && chmod 774 $MARIADB_MYSQL_SOCKET_DIRECTORY
+COPY script/luna/start_luna.sh /srv/bin/start_luna.sh
+
+RUN V=`cat Version` \
+    && sed -i 's/luna-version/'$v'/g' /etc/supervisor/supervisord.conf \
+    && mkdir -p /var/run/mysqld \
+    && chown root:mysql /var/run/mysqld \
+    && chmod 774 /var/run/mysqld \
+    && mkdir -p /srv/log/mariadb \
+    && chmod 777 /srv/log/mariadb \
+    && mkdir -p /srv/log/luna \
+    && chmod 777 /srv/log/luna  
+
 RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
     && apt-get install nano -y    
+
 #CMD ["/usr/bin/supervisord"]
