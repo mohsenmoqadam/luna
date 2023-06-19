@@ -1,4 +1,4 @@
 ## Name of the node
--name luna@luna-ip
+-name luna@luna_ip
 ## Cookie for distributed erlang
 -setcookie luna-cookie

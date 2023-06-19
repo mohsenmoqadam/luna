@@ -11,7 +11,7 @@ WORKDIR /tmp/rebar3
 RUN ./bootstrap \
     && cp ./rebar3 /bin
 
-ARG V=1
+ARG V=2
 
 WORKDIR /tmp
 RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
