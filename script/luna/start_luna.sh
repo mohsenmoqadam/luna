@@ -12,7 +12,7 @@ then
     done
     IP=`ip -4 -o addr show eth0 | tr -s ' ' | cut -d' ' -f 4 | cut -d "/" -f 1`
     sed -i 's/luna_ip/'$IP'/g' /srv/releases/$1/vm.args
-    sed -i 's/luna_ip/'$IP'/g' /srv/releases/$1/sys.args
+    sed -i 's/luna_ip/'$IP'/g' /srv/releases/$1/sys.config
     echo "Starting LUNA..."
     /srv/bin/luna foreground
 fi

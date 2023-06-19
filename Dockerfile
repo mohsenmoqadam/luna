@@ -11,7 +11,7 @@ WORKDIR /tmp/rebar3
 RUN ./bootstrap \
     && cp ./rebar3 /bin
 
-ARG V=2
+ARG V=3
 
 WORKDIR /tmp
 RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
@@ -22,31 +22,27 @@ RUN make rel-prod
 FROM debian:bullseye AS prod
 WORKDIR /srv
 
-COPY --from=build /tmp/luna/_build/prod/rel/luna/luna-1.0.0.tar.gz .
-COPY --from=build /tmp/luna/Version .
-
-RUN tar -zxvf luna-1.0.0.tar.gz
-
-RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
+RUN echo "nameserver 178.22.122.100\nnameserver 185.51.200.2" > /etc/resolv.conf \
     && apt-get update \
     && apt-get install -y curl \
     && curl -LsS -O https://downloads.mariadb.com/MariaDB/mariadb_repo_setup \
     && chmod 777 ./mariadb_repo_setup \
     && ./mariadb_repo_setup --mariadb-server-version=10.10.5 \
     && apt-get install -y --no-install-recommends mariadb-server mariadb-backup \
-    && apt-get install -y supervisor 
+    && apt-get install -y supervisor \
+    && apt-get install -y nano
 
-RUN mkdir /srv/mariadb
-COPY supervisord.conf /etc/supervisor/supervisord.conf    
-COPY script/mariadb/*.sql /srv/mariadb/
-COPY script/mariadb/*.sh /srv/mariadb/
-COPY script/mariadb/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
-COPY script/luna/start_luna.sh /srv/bin/start_luna.sh
+RUN mkdir /srv/script
+    
+COPY --from=build /tmp/luna/_build/prod/rel/luna/luna-1.0.0.tar.gz .
+COPY --from=build /tmp/luna/script /srv/script
+COPY --from=build /tmp/luna/Version . 
 
-RUN echo "nameserver 178.22.122.100" > /etc/resolv.conf \
-    && apt-get install nano -y    
-
-RUN sed -i 's/luna-version/'`cat Version`'/g' /etc/supervisor/supervisord.conf \
+RUN tar -zxvf luna-1.0.0.tar.gz \
+    && rm luna-1.0.0.tar.gz \ 
+    && mv script/supervisord/supervisord.conf /etc/supervisor/supervisord.conf \
+    && mv script/mariadb/50-server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf \
+    && sed -i 's/luna-version/'`cat Version`'/g' /etc/supervisor/supervisord.conf \
     && mkdir -p /var/run/mysqld \
     && chown root:mysql /var/run/mysqld \
     && chmod 774 /var/run/mysqld \
