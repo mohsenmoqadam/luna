@@ -43,6 +43,13 @@ rel-stage:
     #$(SCP) -P 8522 $(PWD)/_build/stage/rel/luna/luna-$(VER).tar.gz $(FS)
 	@printf "\nApplication: %s\n" $(PWD)/_build/stage/rel/luna/luna-$(VER).tar.gz
 
+rel-dock:
+	$(SED) -i 's/{luna, "luna-version"}/{luna, "$(VER)"}/g' ./rebar.config
+	rebar3 as dock release
+	rebar3 as dock tar
+	$(SED) -i 's/{luna, "$(VER)"}/{luna, "luna-version"}/g' ./rebar.config
+	@printf "\nApplication: %s\n" $(PWD)/_build/dock/rel/luna/luna-$(VER).tar.gz
+
 rel-dev:
 	rebar3 as dev release
 
